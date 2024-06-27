@@ -407,7 +407,7 @@ full_tpm = full_tpm %>% select(6,8:10)
 PTC_tpm = full_tpm %>% right_join(sPTC_MANE, by = c("ENSTID" = "transID"))
 PTC_tpm = PTC_tpm %>% select(1,3:4,6:7)
 write_csv(PTC_tpm, "PRPF8_PTC_MANE_TPM.csv")
-write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_fibroblast_PTC_MANE_TPM.csv")
+write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_PTC_MANE_TPM.csv")
 
 #### Look at the effect when only WT filtering####
 WTcounts <-as.data.frame(txi.kallisto.tsv$counts)
@@ -478,9 +478,9 @@ WTalltrans <- as.data.frame(WTres_counts)
 WTalltrans = WTalltrans %>% filter(!is.na(padj))
 WTalltrans<-WTalltrans[order(rownames(WTalltrans)),]
 WTalltrans = rownames_to_column(WTalltrans, var = "transcript_id")
-write_csv(WTalltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_fibroblast_WTfilt_alltrans.csv")
-write_csv(alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_fibroblast_DBfilt_alltrans.csv")
-write_csv(alltransSPTC_MANE,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_fibroblast_PTC_alltrans.csv")
+write_csv(WTalltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_WTfilt_alltrans.csv")
+write_csv(alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_DBfilt_alltrans.csv")
+write_csv(alltransSPTC_MANE,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_PTC_alltrans.csv")
 
 ####Make a list of the genes filtered to WT>5TPM ####
 WT5counts <-as.data.frame(txi.kallisto.tsv$counts)
@@ -551,4 +551,4 @@ WT5alltrans <- as.data.frame(WT5res_counts)
 WT5alltrans = WT5alltrans %>% filter(!is.na(padj))
 WT5alltrans<-WT5alltrans[order(rownames(WT5alltrans)),]
 WT5alltrans = rownames_to_column(WT5alltrans, var = "transcript_id")
-write_csv(WT5alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_fibroblast_WT5filt_alltrans.csv")
+write_csv(WT5alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/PRPF8_RP_WT5filt_alltrans.csv")

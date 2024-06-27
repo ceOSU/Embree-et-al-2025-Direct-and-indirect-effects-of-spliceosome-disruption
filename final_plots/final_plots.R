@@ -23,7 +23,7 @@
 #6/10/2024: Added in the disease AS dataplot
 #6/12-15/2024: Added the no PTC NMD plots
 #6/24/2024: Made the plot for the PTC+,MANE,and Other isoforms from the same genes. 
-#Test change for github repository
+#6/27/2024: Made sure the disease datasets are using the right data. 
 
 library(readr)
 library(readxl)
@@ -2818,7 +2818,6 @@ ggsave("NMD_MANE_vs_PTC_vs_LA_noNMD.pdf",
        dpi = 300)
 
 #### Look at MANE vs PTC vs Other genes from the same set of genes ####
-
 PTC_genes = getBM(attributes = "ensembl_gene_id",
                   filters = "ensembl_transcript_id",
                   values = PTC_list$transID,
@@ -2869,7 +2868,8 @@ all_PTC_boxplot = all_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels =
             show.legend = F,
             position = position_dodge2(width = 0.9),
             size = 7,
-            direction = "y") +
+            direction = "y",
+            segment.color = NA) +
   geom_label(data = all_PTC_FC_summary,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
