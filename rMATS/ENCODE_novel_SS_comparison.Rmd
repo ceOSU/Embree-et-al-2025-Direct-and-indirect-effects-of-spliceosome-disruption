@@ -1,0 +1,429 @@
+---
+title: "Novel Splice Site Analysis"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    theme: journal
+---
+
+```{r include=FALSE}
+setwd("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS")
+```
+ **Date Created**: 1/19/2023
+ 
+ **Date Modified**: 1/30/2023
+
+ **Working Directory**: `r getwd()`
+ 
+ # Updates
+ 
+ 1/30/2023: I added in the PUM1, SF3B1, and ACTN4 datasets, then expanded the analysis to more types of spliceing events.
+ 
+ 4/18/2023: I added in the CDC40 datasets
+ 
+ 4/1/2023: I wrote the code to pull out the AS genes for analysis in the KD
+ 
+ # Introduction
+ 
+ I am further analyzing the new splice sites identified following knockdown of proteins by ENCODE.
+ To see how the files were downloaded and comparisons of the summaries see the "ENCODE Spliceosome rMATS analysis" file or Lab Archives.
+ I am analyzing knockdowns of UPF1, EIF4A3, EFTUD2, AQR, SNRPC, SF3B1, PUM1, ACTN4, CDC40.
+ 
+ ## Import data
+ 
+ ### Novel skipped exons
+ 
+ I am importing the skipped exon events identified as being new by rMATS. 
+ 
+```{r import novel SE, results='hide'}
+library(readr)
+UPF1_novel_SE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(UPF1_novel_SE)
+
+EIF4A3_novel_SE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EIF4A3/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(EIF4A3_novel_SE)
+
+EFTUD2_novel_SE <- read_delim("ENCODE_EFTUD2/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(EFTUD2_novel_SE)
+
+AQR_novel_SE <- read_delim("ENCODE_AQR/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(AQR_novel_SE)
+
+SNRPC_novel_SE <- read_delim("ENCODE_SNRPC/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(SNRPC_novel_SE)
+
+PUM1_novel_SE <- read_delim("ENCODE_PUM1/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(PUM1_novel_SE)
+
+ACTN4_novel_SE <- read_delim("ENCODE_ACTN4/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(ACTN4_novel_SE)
+
+SF3B1_novel_SE <- read_delim("ENCODE_SF3B1/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(SF3B1_novel_SE)
+
+BRR2_novel_SE <- read_delim("ENCODE_SNRNP200/outputdir/fromGTF.novelSpliceSite.SE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+head(BRR2_novel_SE)
+```
+ 
+ ## Examine gene overlap
+ 
+ I am going to make a venn diagram of the genes in each sample.
+ This will show if the knockdown of each protein results in similar novel splice sites.
+ 
+ ### Filtering gene lists
+ 
+ To make the venn diagram I'm going filter each list to one entry from each gene ID. 
+ 
+```{r Filter SE tables}
+library(tidyverse)
+UPF1_SE_1gene = UPF1_novel_SE %>% distinct(GeneID)
+EIF4A3_SE_1gene = EIF4A3_novel_SE %>% distinct(GeneID)
+EFTUD2_SE_1gene = EFTUD2_novel_SE %>% distinct(GeneID)
+AQR_SE_1gene = AQR_novel_SE %>% distinct(GeneID)
+SNRPC_SE_1gene = SNRPC_novel_SE %>% distinct(GeneID)
+PUM1_SE_1gene = PUM1_novel_SE %>% distinct(GeneID)
+ACTN4_SE_1gene = ACTN4_novel_SE %>% distinct(GeneID)
+SF3B1_SE_1gene = SF3B1_novel_SE %>% distinct(GeneID)
+BRR2_SE_1gene = BRR2_novel_SE %>% distinct(GeneID)
+```
+ 
+ ### Make Venn Diagram
+ 
+ I am making a venn diagram showing the overlap of the genes with novel skipped exons in them.
+ 
+```{r Novel SE euler plot}
+library(eulerr)
+library(MetBrewer)
+gene1 = UPF1_SE_1gene$GeneID
+gene2 = EIF4A3_SE_1gene$GeneID
+gene3 = EFTUD2_SE_1gene$GeneID
+gene4 = AQR_SE_1gene$GeneID
+gene5 = SNRPC_SE_1gene$GeneID
+gene6 = SF3B1_SE_1gene$GeneID
+gene7 = PUM1_SE_1gene$GeneID
+gene8 = ACTN4_SE_1gene$GeneID
+
+set.seed(1)
+splice_novel_SE = list("SF3B1" = gene6,
+         "EIF4A3" = gene2,
+         "EFTUD2" = gene3,
+         "AQR" = gene4,
+         "SNRPC" = gene5)
+nonSplice_novel_SE = list("AQR" = gene4,
+                          "PUM1" = gene7,
+                          "ACTN4" = gene8,
+                          "UPF1" = gene1)
+plot(euler(splice_novel_SE), quantities = T, shape = "ellipse",main = "Genes with novel skipped exons following spliceosome component KD")
+plot(euler(nonSplice_novel_SE), quantities = T, shape = "ellipse",main = "Genes with novel skipped exons following non-splicing protein KD")
+```
+ 
+ ### Visualize number of novel skipped exons
+ 
+ Because the ven diagrams are basically imcomprehensable I am going to visualize the number of novel skipped exon events for each sample.
+ 
+```{r Novel SE barplots}
+# Annotate the tables with the sample and alternative splicing type
+AQR_novel_SE = AQR_novel_SE %>% mutate(Sample = "AQR") %>% mutate(Event = "SE") 
+EFTUD2_novel_SE = EFTUD2_novel_SE %>% mutate(Sample = "EFTUD2") %>% mutate(Event = "SE")
+EIF4A3_novel_SE = EIF4A3_novel_SE %>% mutate(Sample = "EIF4A3") %>% mutate(Event = "SE")
+SNRPC_novel_SE = SNRPC_novel_SE %>% mutate(Sample = "SNRPC") %>% mutate(Event = "SE")
+UPF1_novel_SE = UPF1_novel_SE %>% mutate(Sample = "UPF1") %>% mutate(Event = "SE")
+PUM1_novel_SE = PUM1_novel_SE %>% mutate(Sample = "PUM1") %>% mutate(Event = "SE")
+SF3B1_novel_SE = SF3B1_novel_SE %>% mutate(Sample = "SF3B1") %>% mutate(Event = "SE")
+ACTN4_novel_SE = ACTN4_novel_SE %>% mutate(Sample = "ACTN4") %>% mutate(Event = "SE")
+BRR2_novel_SE = BRR2_novel_SE %>% mutate(Sample = "BRR2") %>% mutate(Event = "SE")
+
+# Combine the tables into one massive table
+novel_SE_events = AQR_novel_SE %>% full_join(EFTUD2_novel_SE) %>% full_join(EIF4A3_novel_SE) %>% 
+  full_join(SNRPC_novel_SE) %>% full_join(UPF1_novel_SE) %>% full_join(PUM1_novel_SE) %>% 
+  full_join(SF3B1_novel_SE) %>% full_join(ACTN4_novel_SE) %>% full_join(BRR2_novel_SE)
+
+# Create a summary of how many events were in each sample
+SE_Event_summary = novel_SE_events %>% group_by(Sample,Event) %>% count()
+SE_Event_summary
+
+Sum_plot = ggplot(data = SE_Event_summary)
+Sum_plot = Sum_plot + geom_col(aes(x = Event, y = n, fill = Sample), position = position_dodge2())
+Sum_plot = Sum_plot + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Archambault", n = 10)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "black")) +
+  labs(y = "Number of novel events", x = "Type of Splicing Event", title = "Novel Splicing Events following KD")
+Sum_plot
+```
+ 
+ ## Analyze all novel splicing events
+ 
+ I am going to repeat the graph of splicing events for all of the novel splicing events detected. 
+ If the creation of novel events follows the annotated splicing events, skipped exons should be the highest number of splicing events per sample
+
+### Import datasets
+
+```{r import all other Novel splice events,results='hide'}
+# Import the novel retained introns
+AQR_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_AQR/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import AQR novel RI
+EIF4A3_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EIF4A3/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EIF4A3 novel RI
+EFTUD2_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EFTUD2/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EFTUD2 novel RI
+SNRPC_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRPC/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SNRPC novel RI
+UPF1_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import UPF1 novel RI
+PUM1_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_PUM1/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import PUM1 novel RI
+SF3B1_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SF3B1/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SF3B1 novel RI
+ACTN4_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_ACTN4/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import ACTN4 novel RI
+BRR2_novel_RI <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRNP200/outputdir/fromGTF.novelSpliceSite.RI.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import BRR2 novel RI
+
+# Import the novel mutually exclusive exons
+AQR_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_AQR/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import AQR novel MXE
+EIF4A3_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EIF4A3/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EIF4A3 novel MXE
+EFTUD2_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EFTUD2/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EFTUD2 novel MXE
+SNRPC_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRPC/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SNRPC novel MXE
+UPF1_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import UPF1 novel MXE
+PUM1_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_PUM1/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import PUM1 novel MXE
+SF3B1_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SF3B1/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SF3B1 novel MXE
+ACTN4_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_ACTN4/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import ACTN4 novel MXE
+BRR2_novel_MXE <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRNP200/outputdir/fromGTF.novelSpliceSite.MXE.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import BRR2 novel MXE
+
+# Import the novel alternate 5' splice sites
+AQR_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_AQR/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import AQR novel A5SS
+EIF4A3_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EIF4A3/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EIF4A3 novel A5SS
+EFTUD2_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EFTUD2/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EFTUD2 novel A5SS
+SNRPC_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRPC/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SNRPC novel A5SS
+UPF1_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import UPF1 novel A5SS
+PUM1_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_PUM1/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import PUM1 novel A5SS
+SF3B1_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SF3B1/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SF3B1 novel A5SS
+ACTN4_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_ACTN4/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import ACTN4 novel A5SS
+BRR2_novel_A5SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRNP200/outputdir/fromGTF.novelSpliceSite.A5SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import BRR2 novel A5SS
+
+# Import the novel alternate 3' splice sites
+AQR_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_AQR/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import AQR novel A3SS
+EIF4A3_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EIF4A3/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EIF4A3 novel A3SS
+EFTUD2_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_EFTUD2/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import EFTUD2 novel A3SS
+SNRPC_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRPC/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SNRPC novel A3SS
+UPF1_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import UPF1 novel A3SS
+PUM1_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_PUM1/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import PUM1 novel A3SS
+SF3B1_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SF3B1/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import SF3B1 novel A3SS
+ACTN4_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_ACTN4/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import ACTN4 novel A3SS
+SNRNP200_novel_A3SS <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_SNRNP200/outputdir/fromGTF.novelSpliceSite.A3SS.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) #Import BRR2 novel A3SS
+```
+ 
+### Add datasets to full novel table
+ 
+ I am combining all of the novel splice events into one master table.
+ First I am annotating each dataset with the type of splice event and the sample it comes from.
+ 
+```{r Annotate all tables, results='hide'}
+#Annotate the RI tables
+AQR_novel_RI = AQR_novel_SE %>% mutate(Sample = "AQR") %>% mutate(Event = "RI") 
+EFTUD2_novel_RI = EFTUD2_novel_RI %>% mutate(Sample = "EFTUD2") %>% mutate(Event = "RI")
+EIF4A3_novel_RI = EIF4A3_novel_RI %>% mutate(Sample = "EIF4A3") %>% mutate(Event = "RI")
+SNRPC_novel_RI = SNRPC_novel_RI %>% mutate(Sample = "SNRPC") %>% mutate(Event = "RI")
+UPF1_novel_RI = UPF1_novel_RI %>% mutate(Sample = "UPF1") %>% mutate(Event = "RI")
+PUM1_novel_RI = PUM1_novel_RI %>% mutate(Sample = "PUM1") %>% mutate(Event = "RI")
+SF3B1_novel_RI = SF3B1_novel_RI %>% mutate(Sample = "SF3B1") %>% mutate(Event = "RI")
+ACTN4_novel_RI = ACTN4_novel_RI %>% mutate(Sample = "ACTN4") %>% mutate(Event = "RI")
+BRR2_novel_RI = BRR2_novel_RI %>% mutate(Sample = "BRR2") %>% mutate(Event = "RI")
+
+#Annotate the the mutually exclusive exons 
+AQR_novel_MXE = AQR_novel_MXE %>% mutate(Sample = "AQR") %>% mutate(Event = "MXE") 
+EFTUD2_novel_MXE = EFTUD2_novel_MXE %>% mutate(Sample = "EFTUD2") %>% mutate(Event = "MXE")
+EIF4A3_novel_MXE = EIF4A3_novel_MXE %>% mutate(Sample = "EIF4A3") %>% mutate(Event = "MXE")
+SNRPC_novel_MXE = SNRPC_novel_MXE %>% mutate(Sample = "SNRPC") %>% mutate(Event = "MXE")
+UPF1_novel_MXE = UPF1_novel_MXE %>% mutate(Sample = "UPF1") %>% mutate(Event = "MXE")
+PUM1_novel_MXE = PUM1_novel_MXE %>% mutate(Sample = "PUM1") %>% mutate(Event = "MXE")
+SF3B1_novel_MXE = SF3B1_novel_MXE %>% mutate(Sample = "SF3B1") %>% mutate(Event = "MXE")
+ACTN4_novel_MXE = ACTN4_novel_MXE %>% mutate(Sample = "ACTN4") %>% mutate(Event = "MXE")
+BRR2_novel_MXE = BRR2_novel_MXE %>% mutate(Sample = "BRR2") %>% mutate(Event = "MXE")
+
+#Annotate the alternate 5' splice sites
+AQR_novel_A5SS = AQR_novel_A5SS %>% mutate(Sample = "AQR") %>% mutate(Event = "A5SS") 
+EFTUD2_novel_A5SS = EFTUD2_novel_A5SS %>% mutate(Sample = "EFTUD2") %>% mutate(Event = "A5SS")
+EIF4A3_novel_A5SS = EIF4A3_novel_A5SS %>% mutate(Sample = "EIF4A3") %>% mutate(Event = "A5SS")
+SNRPC_novel_A5SS = SNRPC_novel_A5SS %>% mutate(Sample = "SNRPC") %>% mutate(Event = "A5SS")
+UPF1_novel_A5SS = UPF1_novel_A5SS %>% mutate(Sample = "UPF1") %>% mutate(Event = "A5SS")
+PUM1_novel_A5SS = PUM1_novel_A5SS %>% mutate(Sample = "PUM1") %>% mutate(Event = "A5SS")
+SF3B1_novel_A5SS = SF3B1_novel_A5SS %>% mutate(Sample = "SF3B1") %>% mutate(Event = "A5SS")
+ACTN4_novel_A5SS = ACTN4_novel_A5SS %>% mutate(Sample = "ACTN4") %>% mutate(Event = "A5SS")
+BRR2_novel_A5SS = BRR2_novel_A5SS %>% mutate(Sample = "BRR2") %>% mutate(Event = "A5SS")
+
+#Annotate the alternate 3' splicce sites
+AQR_novel_A3SS = AQR_novel_A3SS %>% mutate(Sample = "AQR") %>% mutate(Event = "A3SS") 
+EFTUD2_novel_A3SS = EFTUD2_novel_A3SS %>% mutate(Sample = "EFTUD2") %>% mutate(Event = "A3SS")
+EIF4A3_novel_A3SS = EIF4A3_novel_A3SS %>% mutate(Sample = "EIF4A3") %>% mutate(Event = "A3SS")
+SNRPC_novel_A3SS = SNRPC_novel_A3SS %>% mutate(Sample = "SNRPC") %>% mutate(Event = "A3SS")
+UPF1_novel_A3SS = UPF1_novel_A3SS %>% mutate(Sample = "UPF1") %>% mutate(Event = "A3SS")
+PUM1_novel_A3SS = PUM1_novel_A3SS %>% mutate(Sample = "PUM1") %>% mutate(Event = "A3SS")
+SF3B1_novel_A3SS = SF3B1_novel_A3SS %>% mutate(Sample = "SF3B1") %>% mutate(Event = "A3SS")
+ACTN4_novel_A3SS = ACTN4_novel_A3SS %>% mutate(Sample = "ACTN4") %>% mutate(Event = "A3SS")
+BRR2_novel_A3SS = BRR2_novel_A3SS %>% mutate(Sample = "BRR2") %>% mutate(Event = "A3SS")
+```
+ 
+ Next I am adding all of these datasets to one table so that I can make graphs more simply
+ 
+```{r Create full novel splice table,results='hide'}
+#Create the master novel splice event table
+Novel_Splicing = novel_SE_events %>% full_join(AQR_novel_A3SS) %>% #Adding all of the other events to the SE table
+  full_join(AQR_novel_A5SS) %>% full_join(AQR_novel_MXE) %>% full_join(AQR_novel_RI) %>% 
+  full_join(EFTUD2_novel_A3SS) %>% full_join(EFTUD2_novel_A5SS) %>% full_join(EFTUD2_novel_MXE) %>% 
+  full_join(EFTUD2_novel_RI) %>% full_join(EIF4A3_novel_A3SS) %>% full_join(EIF4A3_novel_A5SS) %>% 
+  full_join(EIF4A3_novel_MXE) %>% full_join(EIF4A3_novel_RI) %>% full_join(SNRPC_novel_A3SS) %>% 
+  full_join(SNRPC_novel_A5SS) %>% full_join(SNRPC_novel_A3SS) %>% full_join(SNRPC_novel_MXE) %>% 
+  full_join(SNRPC_novel_RI) %>% full_join(UPF1_novel_A3SS) %>% full_join(UPF1_novel_A5SS) %>% 
+  full_join(UPF1_novel_MXE) %>% full_join(UPF1_novel_RI) %>% full_join(PUM1_novel_A3SS) %>% 
+  full_join(PUM1_novel_A5SS) %>% full_join(PUM1_novel_MXE) %>% full_join(PUM1_novel_RI) %>% 
+  full_join(SF3B1_novel_A3SS) %>% full_join(SF3B1_novel_A5SS) %>% full_join(SF3B1_novel_MXE) %>% 
+  full_join(SF3B1_novel_RI) %>% full_join(ACTN4_novel_A3SS) %>% full_join(ACTN4_novel_A5SS) %>% 
+  full_join(ACTN4_novel_MXE) %>% full_join(ACTN4_novel_RI) %>% full_join(BRR2_novel_A3SS) %>%
+  full_join(BRR2_novel_A5SS) %>% full_join(BRR2_novel_MXE) %>% full_join(BRR2_novel_RI)
+head(Novel_Splicing)
+```
+ 
+## Compare novel splicing
+ 
+ I am going to create a graph showing the counts of the novel splicing events that occur in each sample.
+ 
+```{r Novel splicing summary plot}
+#Create a summary table
+Novel_Event_sum = Novel_Splicing %>% group_by(Sample,Event) %>% count()
+
+#Create the graph with the comparisons
+NEC = ggplot(data = Novel_Event_sum)
+NEC = NEC + geom_col(aes(x = Event, y = n, fill = Sample), position = position_dodge2())
+NEC = NEC + theme_minimal() + scale_fill_manual(values = met.brewer("Demuth", n = 9)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "black")) +
+  labs(y = "Number of novel events", x = "Type of Splicing Event", title = "Novel Splicing Events following KD")
+NEC
+ggsave("Novel_Splice_Events.pdf", plot = NEC,
+       device = "pdf",
+       scale = 1,
+       width = 8,
+       height = 6,
+       units = "in",
+       dpi = 300)
+
+#create the comparison graph without controls
+pub = ggplot(data = Novel_event_filt)
+pub = pub + geom_col(aes(x = Event, y = n, fill = Sample), position = position_dodge2())
+pub = pub + theme_minimal() + scale_fill_manual(values = met.brewer("Archambault", n = 9)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "black")) +
+  labs(y = "Number of novel events", x = "Type of Splicing Event", title = "Novel Splicing Events following KD")
+pub
+
+```
+ 
+ ## Create a list of genes that are switching 
+ 
+ I am creating a list of genes that have novel splice sites as a result of a spliceosome KD.
+ This list will let me filter these genes out of the PTC +/- list.
+ I am going to make a separate list for each gene and one for all of the genes together
+ 
+```{r Create novel AS genes}
+ASgenes = Novel_Splicing %>% distinct(GeneID, .keep_all = TRUE) %>% 
+  select(GeneID, geneSymbol) #Creates a list of genes with AS genes from all KDs
+write.csv2(ASgenes, file = "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes.csv")
+
+ASgenes_AQR = Novel_Splicing %>% filter(Sample == "AQR", .keep_all = TRUE) %>% 
+  distinct(GeneID, .keep_all = TRUE) %>% select(GeneID, geneSymbol, Sample) #Creates a list of genes with AS genes from AQR
+write.csv2(ASgenes_AQR, file = "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes_AQR.csv")
+
+ASgenes_EFTUD2 = Novel_Splicing %>% filter(Sample == "EFTUD2", .keep_all = TRUE) %>% 
+  distinct(GeneID, .keep_all = TRUE) %>% select(GeneID, geneSymbol, Sample) #Creates a list of genes with AS genes from EFTUD2
+write.csv2(ASgenes_EFTUD2, file = "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes_EFTUD2.csv")
+
+ASgenes_SF3B1 = Novel_Splicing %>% filter(Sample == "SF3B1", .keep_all = TRUE) %>% 
+  distinct(GeneID, .keep_all = TRUE) %>% select(GeneID, geneSymbol, Sample) #Creates a list of genes with AS genes from SF3B1
+
+ASgenes_SNRPC = Novel_Splicing %>% filter(Sample == "SNRPC", .keep_all = TRUE) %>% 
+  distinct(GeneID, .keep_all = TRUE) %>% select(GeneID, geneSymbol, Sample) #Creates a list of genes with AS genes from SNRPC
+write.csv2(ASgenes_SNRPC, file = "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes_SNRPC.csv")
+```
+ 
+ 
