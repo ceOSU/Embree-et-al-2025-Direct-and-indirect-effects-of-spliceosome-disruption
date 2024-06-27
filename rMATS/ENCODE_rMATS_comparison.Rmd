@@ -1,0 +1,2089 @@
+---
+title: "ENCODE Spliceosome rMATS analysis"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    theme: journal
+  html_document:
+    toc: yes
+    toc_float: yes
+    df_print: paged
+    theme: journal
+---
+```{r include=FALSE}
+setwd("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS")
+library(readr)
+library(readxl)
+library(tidyverse)
+library(MetBrewer)
+library(eulerr)
+library(Cairo)
+library(biomaRt)
+library(MoMAColors)
+library(ggrepel)
+```
+ **Date Created**: 12/19/2022
+ 
+ **Date Modified**: 3/26/2024
+
+ **Working Directory**: `r getwd()`
+ 
+ **Code chunks that do not display output have been run, but have had results turned off.**
+ This is just for chunks that do not display a graph, such as chunks combining data tables.
+ 
+ ### Updates
+ 
+ 1/10/2023: I added in the data from the UPF1 rMATS analysis
+ 
+ 1/23/23: I added in the data from the PUM1 rMATS analysis
+ 
+ 1/30/2023: I added in the data from SF3B1 and ACTN4 rMATS analysis
+ 
+ 1/31/2023: I created the tables to identify overlaps between skipped exons samples
+ 
+ 2/1/2023: I created the euler diagram of the overlap and started working on ways to make an upset plot
+ 
+ 4/21/2023: I deleted the part about the upset plots because it didn't work.
+ I added in the code to generate lists of AS genes for each knockdown. 
+ 
+ 9/18/2023: I removed the section about overlapping skipped exons.
+ It didn't work properly and that analysis is not needed at this time.
+ I also added in the proportion graph for JCEC.
+ 
+ 9/19/2023: I added in all of the novel splice change data.
+ 
+ 9/22/2023: I added in the AGO1 and KIF1C RMATS outputs into this.
+ I also removed the ACTIN4 results from the general analysis, but left the import code in case I need it later. 
+ 
+ 10/19/2023: I added in the PRPF4 outputs and added in the stacked bar plots.
+ 
+ 10/23/2023: I am adding in the CDC40 and RMB22 outputs
+ 
+ 1/10/2024: I added in the poison exon data to look at PSI
+ 
+ 2/19/2024: I modified the PE data to make it a scatter+boxplot and imported the WT TPM >5 data
+ 
+ 2/20/2024: I created the density plots for WT TPM >5 data
+ 
+ 2/22/2024: I am reversing the WT TPM >5 data do determine the number genes that are alternately spliced
+ 
+ 3/1/2024: Added in the MAGOH output to compare to EIF4A3 and rewrote some old script to make it more efficent (like actually using for loops)
+ 
+ 3/4/2024: fixed errors in the data tables caused by trying to merge using bind_rows. Replaced with manual full_join
+ 
+ 3/20/2024: Modified some of the plots to only look at the main fig KD
+ 
+ 3/24/2024: Calculated number of events based on read depth
+ 
+ 4/24/2024: Changed the summary plots to do the calculations correctly and then compare proportion statistics
+ 
+ 5/14/2024: Changed the PE inclusion plot to the new dataset
+ 
+ 5/31/2024: Added in the PRPF8 and PRPF6 datasets
+ 
+ # Introduction
+
+ 
+ I am going to compare the rMATS outputs of a number of knockdowns of the spliceosome from ENCODE.
+ Some of the knockdowns were made using shRNA while other knockouts were made using CRISPR, but all are in K562 cells. 
+ Currently I am comparing knockdowns of EFTUD2, EIF4A3, AQR, SNRPC, and UPF1.
+ EFTUD2 is part of U5, EIF4A3 is part of the EJC, AQR is part of the NTC, and SNRPC is part of U1. 
+ In previous analysis EFTUD2 and AQR KD had an effect on NMD while SNRPC did not.
+ EIF4A3 obviously had an effect on NMD, being involved in that process. 
+ UPF1 acts as the NMD control because it should have an effect on NMD but not on pre-mRNA splicing
+ 
+ # Conducting rMATS
+ 
+ ## Downloading fastQ
+ 
+ All of the fastQ files were downloaded from the NCBI SRA using the OSC supercomputer.
+ 
+ ### EFTUD2
+ 
+ FastQ files were downloaded on 12/16/2022.
+ SRR4421357 and SRR4421358 are the KD runs and SRR4422087 and SRR4422088 are the WT runs.
+ 
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR4421357
+fastq-dump --split-files SRR4421358
+fastq-dump --split-files SRR4422087
+fastq-dump --split-files SRR4422088
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+ 
+ ### EIF4A3
+ 
+FastQ files were downloaded on 11/15/2022.
+SRR3469594 and SRR3s69595 are the KD runs and SRR3469575 and SRR3469576 are the WT runs.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR3469594
+fastq-dump --split-files SRR3469595
+fastq-dump --split-files SRR3469574
+fastq-dump --split-files SRR3469575
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+### AQR
+
+FastQ files were downloaded on 12/1/2022.
+SRR14844828 and SRR14844829 are the KD samples and SRR14846211 and SRR14846212 are the WT samples.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_AQR
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR14844828
+fastq-dump --split-files SRR14844829
+fastq-dump --split-files SRR14846211
+fastq-dump --split-files SRR14846212
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+### SNRPC
+
+SNRPC is a CRISPR KO. 
+FastQ files were downloaded on 12/8/2022.
+SRR14845144 and SRR14845145 are the KD runs and SRR14838740 and SRR14838741 are the WT samples.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR14845144
+fastq-dump --split-files SRR14845145
+fastq-dump --split-files SRR14838740
+fastq-dump --split-files SRR14838741
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+
+### UPF1
+
+The files were downloaded from the SRA on 11/9/2021.
+SRR4421434 and SRR4421435 are the WT samples and SRR4421542 and SRR4421543 are the KD datasets.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_UPF1_K562
+module load sratoolkit
+fastq-dump --split-files SRR4421542
+fastq-dump --split-files SRR4421543
+fastq-dump --split-files SRR4421434
+fastq-dump --split-files SRR4421435
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+### PUM1
+
+As an additional control I am going to use the knockdown of Pumillio (PUM1).
+This will show the effects on splicing using an RNA binding protien that has no role on splicing. 
+The PUM1 KD from ENCODE was done using shRNA.
+SRR4422198 and SRR4422199 are the KD runs and SRR4422044 and SRR4422045 are the control runs.
+The runs were downloaded on 1/2/23.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_PUM1
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR4422198
+fastq-dump --split-files SRR4422199
+fastq-dump --split-files SRR4422044
+fastq-dump --split-files SRR4422045
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+### SF3B1
+
+I am using SF3B1 as a control of an protein that will have massive disregulation of the spliceosome to compare to AQR. 
+The runs were downloaded from the SRA on 1/25/23.
+SRR1484760 and SRR14842761 are the KO runs and SRR14838495 and SRR14838496 are the control runs.
+
+```{bash eval = FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR14842760
+fastq-dump --split-files SRR14842761
+fastq-dump --split-files SRR14838495
+fastq-dump --split-files SRR14838496
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+### ACTN4
+
+I am looking at ACTN4 as a non-RNA binding protein and the effect on splicing.
+The runs were downloaded from the SRA on 1/26/23.
+SRR22521906 and SRR22521907 are the KO runs and SRR22521982 and SRR22521983 are the control runs.
+
+```{bash eval=FALSE}
+#!/bin/bash
+#SBATCH --job-name=FASTQ_download
+#SBATCH --time=3:00:0
+#SBATCH --ntasks=1
+#SBATCH --account=PAS1067
+set -x
+cd /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4
+module load sratoolkit/2.10.7
+fastq-dump --split-files SRR22521906
+fastq-dump --split-files SRR22521907
+fastq-dump --split-files SRR22521982
+fastq-dump --split-files SRR22521983
+echo -------------------------------------------
+echo Current host is `hostname`
+echo Working directory is `pwd`r
+```
+
+
+
+## fastQC
+
+I used fastQC to determine the length of each read.
+Because all of these KD/KO were from ENCODE they were all the same.
+Each read had a sequence length of 100nt.
+
+## rMATS
+
+I ran each of the KD/KO samples through rMATS, using STAR and the ENSEMBL Ch38.108 genome assembly.
+For each of the options I allowed for variable read length, even though all of them should have a read length of 100nt.
+I also had the program identify novel splice sites that are not present in the genome assembly.
+
+### EFTUD2
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2/kd.txt --bi /fs/project/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/project/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_EFTUD2/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### EIF4A3
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3/kd.txt --bi /fs/project/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_EIF4A3/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### AQR
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_AQR
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_AQR/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_AQR/kd.txt --bi /fs/project/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/project/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_AQR/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_AQR/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### SNRPC
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC/kd.txt --bi /fs/project/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/project/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_SNRPC/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### UPF1
+
+rMATS was run on 1/9/2023
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_UPF1
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_UPF1/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_UPF1/kd.txt --bi /fs/ess/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/ess/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_UPF1/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_UPF1/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### PUM1
+
+rMATS was run on 1/23/23
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_PUM1
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_PUM1/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_PUM1/kd.txt --bi /fs/ess/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/ess/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_PUM1/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_PUM1/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### SF3B1
+
+rMATS was run on 1/26/23
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1/kd.txt --bi /fs/ess/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/ess/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_SF3B1/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+### ACTN4
+
+rMATS was run on 1/27/23
+
+```{bash eval=FALSE}
+#PBS -l walltime=08:00:00
+#PBS -l nodes=1:ppn=12
+#PBS -N Rmats
+#PBS -m ae
+#PBS -A PAS1067
+
+set -x
+set echo on
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+echo -------------------------------------------
+
+source activate /users/PAS1067/cmembree/Rmat/rmats
+which python
+which rmats.py
+module load star
+
+cd /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4
+mkdir outputdir
+mkdir tempdir
+~/Rmat/rmats/bin/python ~/Rmat/rmats/bin/rmats.py --s1 /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4/wt.txt --s2 /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4/kd.txt --bi /fs/ess/PAS1067/cembree/STAR_indexing/STARens108 --gtf /fs/ess/PAS1067/cembree/STAR_indexing/Homo_sapiens.GRCh38.108.chr.gtf -t paired --readLength 100 --variable-read-length --novelSS --od /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4/outputdir --tmp /fs/scratch/PAS1067/cmembree/ENCODE_ACTN4/tempdir 
+
+echo -------------------------------------------
+date
+echo Current host is `hostname`
+echo Working directory is `pwd`
+```
+
+# Summary Comparison
+
+I am going to plot the summaries of each of the KD/KO. 
+The total events are all differential splicing events that rMATS detected and significant ones are all the significant splicing events.
+
+```{r Import summary datasets, results='hide'}
+
+all_order = c("UPF1","EIF4A3","MAGOH",
+              "AQR","RBM22","CDC5L",
+              "EFTUD2","SNRNP200","PRPF8","PRPF6",
+              "SF3A1","SF3B1","SF3B3","SF3A3","U2AF1",
+              "CDC40","PRPF3","PRPF4","GNB2L1",
+              "SNRNP70","SNRPC")
+Sample_complex = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/Sample_complex.csv")
+Sample_complex = Sample_complex %>% mutate(Splice_Stage = replace_na(Splice_Stage,"NA"))
+Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","SNRPC")
+Pres_colors = c("UPF1" = "#1C998B","EIF4A3" = "#23BEAC",
+                "AQR" = "#1A264F","EFTUD2" = "#293C7A","SF3B1" = "#334B99",
+                "SNRPC" = "#CC2027")
+all_colors = c("SNRPC" = "#0498DC", "SNRNP70" = "#047CB4", #U1
+               "SF3A1" = "#B1AFD5", "SF3A3" = "#9794C7", "SF3B1" = "#7E79B9", "SF3B3" = "#655FAB","U2AF1" = "#544D93", #U2
+               "PRPF3" = "#D08BBD", "PRPF4" = "#C46EAC", #U4/U6
+               "SNRNP200" = "#F58FA3", "EFTUD2" = "#F26984", #U5
+               "GNB2L1" = "#F58752", #C complex
+               "CDC40" = "#9BDEFD", #B act
+               "HNRNPK" = "#BE9A88",
+               "CDC5L" = "#E7D788", "RBM22" = "#E0CC67", "AQR" = "#D9C045", #NTC
+               "MAGOH" = "#8CCF8C", "EIF4A3" = "#6FC36F", "UPF1" = "#52B752") #NMD
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_summary"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                                                 i,
+                                                 "/outputdir/summary.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports the rMATS summary
+  
+}
+
+read_depth <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_read_depth.xlsx")
+
+```
+
+## JC summary
+
+First I am looking at the splicing events determined using junction counts (JC).
+These are splicing events that were determined just by reads mapping to the exon-exon junctions.
+
+```{r Create JC summary data}
+Combined_sum_JC = tibble(EventType = as.character())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_sum_JC"),
+         eval(parse(text = paste0(i,"_summary"))) %>% dplyr::select(EventType,
+                                                             TotalEventsJC,
+                                                             SignificantEventsJC) %>% 
+  mutate(Sample = i))
+  Combined_sum_JC = Combined_sum_JC %>% full_join(eval(parse(text = paste0(i,"_sum_JC"))))
+}
+
+#Plot the significant events for each differential splicing event
+sig_events_JC = ggplot(data = Combined_sum_JC %>% filter(Sample %in% Pres_KD))
+sig_events_JC = sig_events_JC + geom_col(aes(x = factor(Sample, levels = Pres_KD),
+                                             y = log10(SignificantEventsJC),
+                                             fill = Sample))
+sig_events_JC = sig_events_JC + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Number of Events)",
+       x = "Type of Splicing Event",
+       title = "Significant Splicing Events upon KD",
+       caption = "Calculated using JC",
+       fill = "Sample")
+sig_events_JC
+ggsave("sig_events_JC.pdf",
+       plot = sig_events_JC,
+       device = pdf,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Modify the data for CMBP talk on 4/2/2024
+Pres_sum_JC = Combined_sum_JC %>% filter(Sample %in% Pres_KD) %>%
+  left_join(read_depth,by = "Sample") %>% 
+  mutate(norm_sig = SignificantEventsJC/Avg_millions)
+pres_sig_events_JC = ggplot(data = Pres_sum_JC)
+pres_sig_events_JC = pres_sig_events_JC + geom_col(aes(x = factor(Sample,levels = Pres_KD),
+                                                       y = log10(norm_sig)))
+pres_sig_events_JC = pres_sig_events_JC + theme_minimal() +
+  scale_fill_manual(values = Pres_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Splicing Events/ Million Reads)",
+       x = "Type of Splicing Event",
+       title = "Significantly changing Splicing Events upon KD",
+       caption = "Calculated using JC",
+       fill = "Type of Splice Event")
+pres_sig_events_JC
+ggsave("pres_sig_events_JC.pdf",
+       plot = pres_sig_events_JC,
+       device = pdf,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Plot the total events for each differential splicing event
+tot_events_JC = ggplot(data = Combined_sum_JC)
+tot_events_JC = tot_events_JC + geom_col(aes(x = EventType,
+                                             y = log10(TotalEventsJC),
+                                             fill = factor(Sample,
+                                                           levels = all_order)),
+                                         position = position_dodge2())
+tot_events_JC = tot_events_JC + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Number of Events)",
+       x = "Type of Splicing Event",
+       title = "Total Splicing Events upon KD",
+       caption = "Calculated using JC",
+       fill = "Sample")
+tot_events_JC
+ggsave("total_events_JC.pdf",
+       plot = tot_events_JC,
+       device = pdf,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+
+## JCEC summary
+
+These graphs are made using summary based on JCEC calculations. 
+These calculations determine splicing events based on reads that map to exon-exon junction and on reads that map to differentially spliced exons.
+This should help increase detection of events like skipped exons. 
+
+```{r Create JCEC summary data}
+
+Combined_sum_JCEC = tibble(EventType = as.character())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_sum_JCEC"),
+         eval(parse(text = paste0(i,"_summary"))) %>% 
+           dplyr::select(1,3,7,9) %>% 
+           mutate(Sample = i)) #Select the JCEC tables
+  Combined_sum_JCEC = Combined_sum_JCEC %>% full_join(eval(parse(text = paste0(i,"_sum_JCEC"))))
+}
+
+
+#Plot the significant events for each differential splicing event
+sig_events_JCEC = ggplot(data = Combined_sum_JCEC)
+sig_events_JCEC = sig_events_JCEC + geom_col(aes(x = EventType,
+                                                 y = log10(SignificantEventsJCEC),
+                                                 fill = factor(Sample,
+                                                               levels = all_order)),
+                                             position = position_dodge2())
+sig_events_JCEC = sig_events_JCEC + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Number of Events)",
+       x = "Type of Splicing Event",
+       title = "Significant Splicing Events upon KD",
+       caption = "Calculated using JCEC",
+       fill = "Sample")
+sig_events_JCEC
+ggsave("Sig_events_JECEC.pdf",
+       plot = sig_events_JCEC,
+       device = "pdf",
+       scale = 1,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+
+#Modify the data for Presentation
+Pres_sum_JCEC = Combined_sum_JCEC %>%
+  left_join(read_depth,by = "Sample") %>% 
+  mutate(norm_sig = SignificantEventsJCEC/Avg_millions,
+         KD_inclusion = SigEventsJCECSample2HigherInclusion/Avg_millions)
+plot_JCEC = Pres_sum_JCEC %>% group_by(Sample) %>% summarise(sig = sum(norm_sig),
+                                                             inc = sum(KD_inclusion)) %>% 
+  mutate(log_norm = log10(sig),
+         log_inc = log10(inc)) %>% 
+  left_join(Sample_complex, by = "Sample")
+pres_sig_events_JCEC = ggplot(data = plot_JCEC)
+pres_sig_events_JCEC = pres_sig_events_JCEC + geom_col(aes(x = factor(Sample,levels = all_order),
+                                                       y = log_norm,
+                                                       fill = Splice_Stage),
+                                                       show.legend = F)
+pres_sig_events_JCEC = pres_sig_events_JCEC + theme_minimal() +
+  scale_fill_manual(values = Complex_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Splicing Events/ Million Reads)",
+       x = "Gene KD",
+       title = "Significantly changing Splicing Events upon KD",
+       caption = "Calculated using JCEC")
+pres_sig_events_JCEC
+ggsave("pres_sig_events_JCEC.pdf",
+       plot = pres_sig_events_JCEC,
+       device = pdf,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+pres_sig_KD_inc_JCEC = ggplot(data = plot_JCEC)
+pres_sig_KD_inc_JCEC = pres_sig_KD_inc_JCEC + geom_col(aes(x = factor(Sample,levels = Pres_KD),
+                                                       y = log_inc,
+                                                       fill = factor(Sample,levels = Pres_KD)),
+                                                       show.legend = F)
+pres_sig_KD_inc_JCEC = pres_sig_KD_inc_JCEC + theme_minimal() +
+  scale_fill_manual(values = Pres_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Splicing Events/ Million Reads)",
+       x = "Gene KD",
+       title = "Significantly higher splicing events in KD",
+       caption = "Calculated using JCEC")
+pres_sig_KD_inc_JCEC
+ggsave("pres_sig_KD_inc_JCEC.pdf",
+       plot = pres_sig_KD_inc_JCEC,
+       device = pdf,
+       width = 6,
+       height = 6,
+       units = "in",
+       dpi = 300)
+#Plot the total events for each differential splicing event
+tot_events_JCEC = ggplot(data = Combined_sum_JCEC)
+tot_events_JCEC = tot_events_JCEC + geom_col(aes(x = EventType,
+                                                 y = log10(TotalEventsJCEC),
+                                                 fill = factor(Sample,levels = all_order)),
+                                             position = position_dodge2())
+tot_events_JCEC = tot_events_JCEC + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Number of Events)",
+       x = "Type of Splicing Event",
+       title = "Total Splicing Events upon KD",
+       caption = "Calculated using JCEC",
+       fill = "Sample")
+tot_events_JCEC
+ggsave("total_events_JCEC.pdf",
+       plot = tot_events_JCEC,
+       device = pdf,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+
+## Percentile summary
+
+To make the summary of the different events easier I am going to replot them as the proportion of events.
+That should make it easier to compare events without data like AQR throwing things off. 
+
+```{r Regraph using the proportion of counts}
+#Calculate the percents
+percent_sum = Combined_sum_JCEC %>% group_by(Sample) %>% 
+  mutate(percent_sig = SignificantEventsJCEC/sum(SignificantEventsJCEC),
+         tot_percent = TotalEventsJCEC/sum(TotalEventsJCEC))
+#Graph the propotions of the events
+sig_prop = ggplot(data = percent_sum)
+sig_prop = sig_prop + geom_col(aes(x = EventType,
+                                   y = percent_sig,
+                                   fill = EventType),
+                               position = position_dodge2())
+sig_prop = sig_prop + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "Proportion of Splice Events",
+       x = "Type of Splicing Event",
+       title = "Changes in Annotated Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+sig_prop = sig_prop + facet_wrap(vars(Sample), nrow = 7)
+sig_prop
+ggsave("Sig_prop_JECEC.pdf",
+       plot = sig_prop,
+       device = "pdf",
+       scale = 1,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+sig_width = percent_sum %>% group_by(Sample) %>% summarise(n = sum(SignificantEventsJCEC))
+sig_width = sig_width %>% mutate(prop = n/sum(n))
+percent_sum = percent_sum %>% left_join(sig_width, by = "Sample") #Use this for width if you want size of the bars to be proportional to number of events
+
+sig_stacked = ggplot(data = percent_sum)
+sig_stacked = sig_stacked + geom_col(aes(x = factor(Sample,levels = all_order), 
+                                         y = percent_sig, 
+                                         fill = EventType))
+sig_stacked = sig_stacked + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "KD",
+       x = "Proportion of Significant Splicing Changes",
+       title = "Changes in Annotated Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+sig_stacked
+ggsave("Sig_stacked_JCEC.pdf",
+       plot = sig_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Paper Figures/Figure 3/Sig_stacked_JCEC.pdf",
+       plot = sig_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+
+
+# Venn diagram SE
+
+I am going to take the significant genes in each of the samples and see how they overlap.
+To do this I am first getting narrowing the events down to one event per gene. 
+
+## Skipped exons JC
+
+I am not includeing SNRNP200 on the venn diagrams because there is no room.
+I am also skipping AGO1, KIF1C, CDC40, RBM22, and PRPF4.
+
+```{r Create JC skipped exon euler plot}
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_SE_JC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/SE.MATS.JC.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Import the skipped Exon data based on JC)
+  
+  assign(paste0(i,"_SE_sig_JC"),
+         eval(parse(text = paste0(i,"_SE_JC"))) %>% 
+         group_by(GeneID) %>% 
+         filter(PValue < 0.01) %>%   #Pick only the significant genes
+         ungroup())
+  
+  assign(paste0(i,"_SE_sig_JC_unique"),
+         eval(parse(text = paste0(i,"_SE_sig_JC"))) %>% 
+         distinct(GeneID)) #Pick one event if there's multiple with small p-values
+         
+}
+
+
+#Venn diagram 
+gene1 = AQR_SE_sig_JC_unique$GeneID
+gene2 = EIF4A3_SE_sig_JC_unique$GeneID
+gene3 = EFTUD2_SE_sig_JC_unique$GeneID
+gene4 = SF3B3_SE_sig_JC_unique$GeneID
+gene5 = UPF1_SE_sig_JC_unique$GeneID
+gene7 = SF3B1_SE_sig_JC_unique$GeneID
+
+
+set.seed(1)
+splice_JC = list("AQR SE genes" = gene1,
+         "EIF4A3 SE genes" = gene2,
+         "EFTUD2 SE genes" = gene3,
+         "SF3B3 SE genes" = gene4,
+         "SF3B1 SE genes" = gene7)
+
+plot(euler(splice_JC), quantities = T, main = "Lowest pvalue significant genes (JC) when spliceosome components disrupted")
+
+```
+
+## Skipped exons JCEC
+
+```{r Create JCEC skipped exon euler plot}
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #import the AQR skipped exon data based on JCEC
+  
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           group_by(GeneID) %>% 
+           filter(PValue < 0.01))
+  
+  assign(paste0(i,"_SE_sig_JCEC_unique"),
+         eval(parse(text = paste0(i,"_SE_sig_JCEC"))) %>% 
+           distinct(GeneID))
+}
+
+#Venn diagram 
+gene9 = AQR_SE_sig_JCEC_unique$GeneID
+gene10 = EIF4A3_SE_sig_JCEC_unique$GeneID
+gene11 = EFTUD2_SE_sig_JCEC_unique$GeneID
+gene12 = SF3B3_SE_sig_JCEC_unique$GeneID
+gene13 = UPF1_SE_sig_JCEC_unique$GeneID
+
+gene15 = SF3B1_SE_sig_JCEC_unique$GeneID
+
+
+set.seed(1)
+splice_JCEC = list("AQR SE genes" = gene9,
+         "EIF4A3 SE genes" = gene10,
+         "EFTUD2 SE genes" = gene11,
+         "SF3B3 SE genes" = gene12,
+         "SF3B1 SE genes" = gene15)
+
+plot(euler(splice_JCEC), quantities = T, main = "Lowest pvalue significant genes (JCEC) after spliceosome disruption")
+```
+
+# Create lists of annotated AS genes
+
+I am creating a list of genes for each sample that show significant annotated alternate splicing.
+This will allow me to just look at the CDF plots for the non-AS NMD genes.
+I am using the JCEC reads.
+
+```{r Create lists of annotated AS genes, results='hide'}
+for (i in all_order) {
+  print(i)
+    assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #import the AQR skipped exon data based on JCEC
+  
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           group_by(GeneID) %>% 
+           filter(PValue < 0.01))
+  assign(paste0(i,"_3SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/A3SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 3' Splice Site
+  assign(paste0(i,"_3SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_3SS_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "A3SS")
+  
+  assign(paste0(i,"_5SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/A5SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 5' Splice Site
+  assign(paste0(i,"_5SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_5SS_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "A5SS")
+  
+  assign(paste0(i,"_MXE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/MXE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the mutually exclusive exons
+  assign(paste0(i,"_MXE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_MXE_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "MXE")
+  
+    assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the skipped exons
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "SE")
+  
+    assign(paste0(i,"_RI_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/RI.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the Retained Introns
+  assign(paste0(i,"_RI_sig_JCEC"),
+         eval(parse(text = paste0(i,"_RI_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "RI")
+  
+  assign(paste0(i,"_sig_combined"),
+         eval(parse(text = paste0(i,"_SE_sig_JCEC"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_3SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_5SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_MXE_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_RI_sig_JCEC")))))
+  
+  write_csv(eval(parse(text = paste0(i,"_sig_combined"))),
+            file = paste0("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/",
+                          i,
+                          "_annotated_AS.csv"))
+}
+
+```
+# Novel Splice site analysis 
+
+I am combining the novel splice site analysis that was previously it's own file.
+This will allow me to combine the annotated and novel splicing analysis together.
+
+ ## Import data
+ 
+ ### Novel skipped exons
+ 
+ I am importing the skipped exon events identified as being new by rMATS. 
+ 
+```{r import novel SE, results='hide'}
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_novel_SE"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                           i,
+                           "/outputdir/fromGTF.novelSpliceSite.SE.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T))
+}
+```
+ 
+## Examine gene overlap
+ 
+ I am going to make a venn diagram of the genes in each sample.
+ This will show if the knockdown of each protein results in similar novel splice sites.
+ 
+### Filtering gene lists
+ 
+ To make the venn diagram I'm going filter each list to one entry from each gene ID. 
+ 
+```{r Filter SE tables, results='hide'}
+UPF1_SE_1gene = UPF1_novel_SE %>% distinct(GeneID)
+EIF4A3_SE_1gene = EIF4A3_novel_SE %>% distinct(GeneID)
+EFTUD2_SE_1gene = EFTUD2_novel_SE %>% distinct(GeneID)
+AQR_SE_1gene = AQR_novel_SE %>% distinct(GeneID)
+SF3B3_SE_1gene = SNRPC_novel_SE %>% distinct(GeneID)
+SF3B1_SE_1gene = SF3B1_novel_SE %>% distinct(GeneID)
+SNRNP200_SE_1gene = SNRNP200_novel_SE %>% distinct(GeneID)
+```
+ 
+ ### Make Venn Diagram
+ 
+ I am making a venn diagram showing the overlap of the genes with novel skipped exons in them.
+ 
+```{r Novel SE euler plot}
+gene1 = UPF1_SE_1gene$GeneID
+gene2 = EIF4A3_SE_1gene$GeneID
+gene3 = EFTUD2_SE_1gene$GeneID
+gene4 = AQR_SE_1gene$GeneID
+gene5 = SF3B3_SE_1gene$GeneID
+gene6 = SF3B1_SE_1gene$GeneID
+
+set.seed(1)
+splice_novel_SE = list("SF3B1" = gene6,
+         "EIF4A3" = gene2,
+         "EFTUD2" = gene3,
+         "AQR" = gene4,
+         "SF3B3" = gene5)
+plot(euler(splice_novel_SE), quantities = T, shape = "ellipse",main = "Genes with novel skipped exons following spliceosome component KD")
+```
+ 
+ ### Visualize number of novel skipped exons
+ 
+ Because the ven diagrams are basically imcomprehensable I am going to visualize the number of novel skipped exon events for each sample.
+ 
+```{r Novel SE barplots}
+novel_SE_events = tibble(Sample = as.character())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_novel_SE"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           mutate(Sample = i,
+                  Event = "SE"))
+  novel_SE_events = novel_SE_events %>% full_join(eval(parse(text = paste0(i,"_novel_SE"))))
+}
+
+# Create a summary of how many events were in each sample
+SE_Event_summary = novel_SE_events %>% group_by(Sample,Event) %>% count()
+SE_Event_summary
+
+Sum_plot = ggplot(data = SE_Event_summary)
+Sum_plot = Sum_plot + geom_col(aes(x = Event,
+                                   y = n,
+                                   fill = factor(Sample,levels = all_order)),
+                               position = position_dodge2())
+Sum_plot = Sum_plot + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Archambault", n = 21)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "Number of novel events",
+       x = "Type of Splicing Event",
+       title = "Novel Splicing Events following KD",
+       fill = "Sample")
+Sum_plot
+```
+ 
+ ## Analyze all novel splicing events
+ 
+ I am going to repeat the graph of splicing events for all of the novel splicing events detected. 
+ If the creation of novel events follows the annotated splicing events, skipped exons should be the highest number of splicing events per sample
+
+### Import datasets
+
+```{r import all other Novel splice events, results='hide'}
+
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_novel_RI"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.RI.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Retained Introns
+    
+  assign(paste0(i,"_novel_MXE"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.MXE.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Mutually Exclusive Exons
+    
+  assign(paste0(i,"_novel_A3SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A3SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Import the novel alternate 3' splice sites
+  
+  assign(paste0(i,"_novel_A5SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A5SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Import the novel alternate 5' splice sites
+}
+
+```
+ 
+### Add datasets to full novel table
+ 
+ I am combining all of the novel splice events into one master table.
+ First I am annotating each dataset with the type of splice event and the sample it comes from.
+ 
+```{r Annotate all tables, results='hide'}
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_novel_RI"),
+         eval(parse(text = paste0(i,"_novel_RI"))) %>% 
+           mutate(Sample = i,
+                  Event = "RI"))
+  
+  assign(paste0(i,"_novel_MXE"),
+         eval(parse(text = paste0(i,"_novel_MXE"))) %>% 
+           mutate(Sample = i,
+                  Event = "MXE"))
+    
+  assign(paste0(i,"_novel_A5SS"),
+         eval(parse(text = paste0(i,"_novel_A5SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A5SS"))
+      
+  assign(paste0(i,"_novel_A3SS"),
+         eval(parse(text = paste0(i,"_novel_A3SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A3SS"))  
+}
+
+```
+ 
+ Next I am adding all of these datasets to one table so that I can make graphs more simply
+ 
+```{r Create full novel splice table,results='hide'}
+
+for (i in all_order) {
+  assign(paste0(i,"_novel_events"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A3SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A5SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_RI")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_MXE")))))
+}
+Novel_splicing = EIF4A3_novel_events %>% full_join(UPF1_novel_events) %>%
+  full_join(MAGOH_novel_events) %>% 
+  full_join(SF3B1_novel_events) %>% full_join(SF3B3_novel_events) %>% full_join(EFTUD2_novel_events) %>%
+    full_join(SNRNP200_novel_events) %>%
+  full_join(AQR_novel_events) %>% full_join(RBM22_novel_events) %>% full_join(SNRPC_novel_events) %>%
+    full_join(GNB2L1_novel_events) %>%
+  full_join(SNRNP70_novel_events) %>% full_join(PRPF3_novel_events)  %>%
+    full_join(SF3A3_novel_events) %>% 
+  full_join(PRPF4_novel_events) %>% full_join(CDC40_novel_events) %>% full_join(CDC5L_novel_events) %>%
+    full_join(U2AF1_novel_events) %>% 
+  full_join(SF3A1_novel_events) %>% full_join(PRPF6_novel_events) %>% full_join(PRPF8_novel_events)
+write_csv(Novel_splicing, file = "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/all_novel_splice_events.csv")
+head(Novel_splicing)
+```
+ 
+## Compare novel splicing
+ 
+ I am going to create a graph showing the counts of the novel splicing events that occur in each sample.
+ 
+```{r Novel splicing summary plot}
+#Create a summary table
+Novel_Event_sum = Novel_splicing %>% group_by(Sample,Event) %>% count()
+
+#Create the graph with the comparisons
+NEC = ggplot(data = Novel_Event_sum)
+NEC = NEC + geom_col(aes(x = Event,
+                         y = log10(n),
+                         fill = factor(Sample,
+                                       levels = all_order)),
+                     position = position_dodge2())
+NEC = NEC + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Number of novel events)",
+       x = "Type of Splicing Event",
+       title = "Novel Splicing Events following KD",
+       fill = "Sample")
+NEC
+ggsave("Novel_Splice_Events.pdf", plot = NEC,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Modify the data for CMBP talk on 4/2/2024
+Pres_sum_novel = Novel_Event_sum %>%
+  group_by(Sample) %>% 
+  summarise(total = sum(n)) %>% 
+  left_join(read_depth,by = "Sample") %>% 
+  mutate(norm_total = total/Avg_millions) %>% 
+  left_join(Sample_complex, by = "Sample")
+pres_sig_events_novel = ggplot(data = Pres_sum_novel)
+pres_sig_events_novel = pres_sig_events_novel + geom_col(aes(x = factor(Sample,levels = all_order),
+                                                       y = log10(norm_total),
+                                                       fill = Splice_Stage),
+                                                       show.legend = FALSE)
+pres_sig_events_novel = pres_sig_events_novel + theme_minimal() +
+  scale_fill_manual(values = Complex_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "log10(Splicing Events/ Million Reads)",
+       x = "Gene KD",
+       title = "Novel Splicing Events upon KD")
+pres_sig_events_novel
+ggsave("pres_sig_events_novel.pdf",
+       plot = pres_sig_events_novel,
+       device = pdf,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+```
+ 
+## Create proportional novel gene plot
+
+Like I did for the annotated splice events, I'm going to create a plot showing the proportion of novel splice events.
+This will help prevent AQR from making it hard to determine compare the individgual results.
+
+```{r Create novel proportional summary}
+#Annotate data
+novel_prop_sum = Novel_Event_sum %>% group_by(Sample) %>% mutate(prop = n/sum(n))
+
+#Create Proportional bar graph
+Novel_prop_plot = ggplot(data = novel_prop_sum)
+Novel_prop_plot = Novel_prop_plot + geom_col(aes(x = Event,
+                                                 y = prop,
+                                                 fill = Event))
+Novel_prop_plot = Novel_prop_plot + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "Proportion of Novel Splice Events",
+       x = "Type of Splicing Event",
+       title = "Changes in Novel Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+Novel_prop_plot = Novel_prop_plot + facet_wrap(vars(factor(Sample,levels = all_order)), ncol = 7)
+Novel_prop_plot
+ggsave("Novel_proportion_JCEC.pdf",
+       plot = Novel_prop_plot,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 8,
+       units = "in",
+       dpi = 300)
+
+
+
+
+novel_stacked = ggplot(data = novel_prop_sum)
+novel_stacked = novel_stacked + geom_col(aes(x = factor(Sample, levels = all_order),
+                                             y = prop,
+                                             fill = Event))
+novel_stacked = novel_stacked + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "KD",
+       x = "Proportion of Novel Splice Events",
+       title = "Changes in Novel Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+novel_stacked
+ggsave("Novel_stacked_JCEC.pdf",
+       plot = novel_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Paper Figures/Figure 3/Novel_stacked_JCEC.pdf",
+       plot = novel_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+
+## Create plots faceted by event type
+
+I am remaking the bar plots, but with each splicing event type being done on their own plot. 
+
+```{r}
+
+Novel_prop_facet = ggplot(data = novel_prop_sum)
+Novel_prop_facet = Novel_prop_facet + geom_col(aes(x = factor(Sample, levels = all_order),
+                                                   y = prop,
+                                                   fill = factor(Sample, levels = all_order)))
+Novel_prop_facet = Novel_prop_facet + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "Proportion of Novel Splice Events",
+       x = "Sample",
+       title = "Changes in Novel Splicing Events Upon KD",
+       caption = "Calculated using JCEC",
+       fill = "Sample") +
+  guides(x= guide_axis(angle = 45))
+Novel_prop_facet = Novel_prop_facet + facet_wrap(vars(Event), ncol = 5)
+Novel_prop_facet
+ggsave("Novel_facet_JCEC.pdf",
+       plot = Novel_prop_facet,
+       device = "pdf",
+       scale = 1,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Significant facet
+sig_prop_facet = ggplot(data = percent_sum)
+sig_prop_facet = sig_prop_facet + geom_col(aes(x = factor(Sample, levels = all_order),
+                                                   y = percent_sig,
+                                                   fill = factor(Sample, levels = all_order)))
+sig_prop_facet = sig_prop_facet + theme_minimal() +
+  scale_fill_manual(values = all_colors) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "Proportion of Novel Splice Events",
+       x = "Sample",
+       title = "Changes in Novel Splicing Events Upon KD",
+       caption = "Calculated using JCEC",
+       fill = "Sample") +
+  guides(x= guide_axis(angle = 45))
+sig_prop_facet = sig_prop_facet + facet_wrap(vars(EventType), ncol = 5)
+sig_prop_facet
+ggsave("Significant_facet_JCEC.pdf",
+       plot = sig_prop_facet,
+       device = "pdf",
+       scale = 1,
+       width = 16,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+
+
+## Create a list of genes that are switching 
+ 
+ I am creating a list of genes that have novel splice sites as a result of a spliceosome KD.
+ This list will let me filter these genes out of the PTC +/- list.
+ I am going to make a separate list for each gene and one for all of the genes together
+ 
+```{r Create novel AS genes}
+ASgenes = Novel_splicing %>% distinct(GeneID, .keep_all = TRUE) %>% 
+  dplyr::select(GeneID, geneSymbol) #Creates a list of genes with AS genes from all KDs
+write.csv2(ASgenes, file = "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes.csv")
+
+for (i in all_order) {
+  print(i)
+  assign(paste0("ASgenes_",i),
+         Novel_splicing %>% filter(Sample == i) %>% 
+           distinct(GeneID, .keep_all = T) %>% 
+           dplyr::select(GeneID, geneSymbol, Sample))
+  
+  write.csv2(eval(parse(text = paste0("ASgenes_",i))),
+             file = paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ASgenes/novel_ASgenes_",
+                           i,
+                           ".csv"))
+}
+```
+ 
+# Make Poster figure
+
+I am making the figure for my poster for Rustbelt RNA meeting 2023.
+The figure will be a stacked plot like I previously made, but showing the total number of splicing events. 
+I am also reducing the number of samples I am including. 
+
+This was commented out because other code updates broke this and I don't need it any more. 
+I'm leaving it in for posterity though.
+
+```{r}
+#Make poster table
+# poster_table = percent_sum %>% left_join(novel_prop_sum, by = c("Sample","EventType" = "Event"),
+#                                          suffix = c("_sig","_novel"))
+# poster_table = poster_table %>% dplyr::select(1,3:4,9)
+# poster_table = poster_table %>% mutate(tot = SignificantEventsJCEC + n_novel, Sample = as.factor(Sample)) 
+# poster_table = poster_table %>% group_by(Sample) %>% mutate(Event_prop = tot/sum(tot)) %>% ungroup()
+# poster_table = poster_table %>% filter(Sample == "UPF1" | Sample == "EIF4A3" | Sample == "AQR" | Sample == "CDC40" |
+#                                          Sample == "SF3B1" | Sample == "EFTUD2")
+# poster_width = poster_table %>% group_by(Sample) %>% summarise(KD_tot = sum(tot))
+# poster_width = poster_width %>% mutate(KD_prop = KD_tot/sum(KD_tot))
+# poster_table = poster_table %>% left_join(poster_width, by = "Sample")
+# 
+# 
+# poster_order = c("UPF1","EIF4A3","AQR","CDC40","SF3B1","EFTUD2")
+# 
+# #Make Poster Graph
+# poster_fig = ggplot(data = poster_table)
+# poster_fig = poster_fig + geom_col(aes(y = factor(Sample, levels = poster_order),
+#                                              x = Event_prop,
+#                                              fill = EventType),
+#                                          width = poster_table$KD_prop + 0.2)
+# poster_fig = poster_fig + theme_minimal() +
+#   scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+#   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "black")) +
+#   labs(y = "KD", x = "Proportion of Splice Events", title = "Changes in Splicing Events Upon KD", caption = "Calculated using JCEC")
+# poster_fig
+# ggsave("Poster_all_events.pdf",
+#        plot = poster_fig,
+#        device = "pdf",
+#        scale = 1,
+#        width = 12,
+#        height = 10,
+#        units = "in",
+#        dpi = 300)
+```
+
+# Percent Spliced in (PSI) of Poison exons
+
+To get a better idea of how poison exons are being effected by the spliceosome KDs, I want to look at the percent spliced in (PSI) of the poison exon.
+In rMATS the PSI is also known as the inclusion exon. 
+As a proof of prinicple I am going to look at exon 3 of SRSF3, which I have looked at in IGV before. 
+
+```{r Combine SE tables and SRSF3 exam}
+
+SRSF3_all = tibble()
+SRSF3_no_filt = tibble()
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_SE_JC"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_",i,"/outputdir/SE.MATS.JC.txt"), 
+     delim = "\t", escape_double = FALSE, 
+     trim_ws = TRUE))
+  
+  assign(paste0(i,"_SE_JC"), eval(parse(text = paste0(i,"_SE_JC"))) %>% mutate(Sample = paste0(i)))
+  
+  assign(paste0(i,"_SRSF3_SE"), eval(parse(text = paste0(i,"_SE_JC"))) %>%
+           filter(geneSymbol == "SRSF3" & exonStart_0base == 36599820))
+}
+SRSF3_no_filt = AGO1_SRSF3_SE %>% full_join(EIF4A3_SRSF3_SE) %>% full_join(UPF1_SRSF3_SE) %>% 
+  full_join(MAGOH_SRSF3_SE) %>% 
+  full_join(SF3B1_SRSF3_SE) %>% full_join(SF3B3_SRSF3_SE) %>% full_join(EFTUD2_SRSF3_SE) %>%
+  full_join(SNRNP200_SRSF3_SE) %>%
+  full_join(AQR_SRSF3_SE) %>% full_join(RBM22_SRSF3_SE) %>% full_join(SNRPC_SRSF3_SE) %>% full_join(GNB2L1_SRSF3_SE) %>%
+  full_join(SNRNP70_SRSF3_SE) %>% full_join(PRPF3_SRSF3_SE) %>% full_join(HNRNPK_SRSF3_SE) %>%
+  full_join(SF3A3_SRSF3_SE) %>% 
+  full_join(PRPF4_SRSF3_SE) %>% full_join(CDC40_SRSF3_SE) %>% full_join(CDC5L_SRSF3_SE) %>%
+  full_join(U2AF1_SRSF3_SE) %>% 
+  full_join(SF3A1_SRSF3_SE)
+SRSF3_all = SRSF3_no_filt %>% 
+    filter(upstreamES == 36598848 & upstreamEE == 36598983 & downstreamES == 36601151 &
+           downstreamEE == 36601190) %>%
+    mutate(Corected_ILD = IncLevelDifference * -1)
+SRSF3_plot = ggplot(data = SRSF3_all)
+SRSF3_plot = SRSF3_plot + geom_col(aes(x = factor(Sample,levels = all_order), y = Corected_ILD),
+                                   fill = "#76CEB5") +
+  theme_bw() +
+  labs(title = "SRSF3 poison exon inclusion",
+       subtitle = "KD inclusion - WT inclusion",
+       x = "KD",
+       y = "Inclusion Level Difference") +
+  theme(axis.text.x = element_text(angle = 30,vjust = 0.95,hjust = 1))
+SRSF3_plot
+ggsave("SRSF3_PE_inclusion.pdf",
+       plot = SRSF3_plot,
+       units = "in",
+       height = 10,
+       width = 12,
+       dpi = 300,
+       device = pdf)
+
+SRSF3_no_filt = SRSF3_no_filt %>% group_by(Sample) %>% summarise(n = n(), Total_inc = sum(IncLevelDifference) * -1)
+
+SRSF3_combo_plot = ggplot(data = SRSF3_no_filt)
+SRSF3_combo_plot = SRSF3_combo_plot + geom_col(aes(x = factor(Sample, levels = all_order),
+                                                   y = Total_inc,
+                                                   fill = as.factor(n))) +
+  scale_fill_manual(values = moma.colors("Flash",n=5,type = "continuous")) +
+  theme_bw() +
+  labs(title = "SRSF3 poison exon inclusion",
+       subtitle = "WT inclusion - KD inclusion",
+       x = "KD",
+       y = "Inclusion Level Difference",
+       caption = "All exon inclusion",
+       fill = "Number of PE") +
+  theme(axis.text.x = element_text(angle = 30,vjust = 0.95,hjust = 1))
+SRSF3_combo_plot
+ggsave("SRSF3_PE_inclusion_noFilt.pdf",
+       plot = SRSF3_combo_plot,
+       units = "in",
+       height = 10,
+       width = 12,
+       dpi = 300,
+       device = pdf)
+```
+
+Now that I know that I can get the PSI from the RMATS output I am going to try and get it for all of the PEs.
+After I identified the exon IDs from the grCh37 assembly of ensembl I used the current assembly of the genome to get their coordinates.
+Because RMATS uses the 0 base I subtracted 1 from the exon start coordinates that ensembl gave me. 
+
+```{r Look at PSI of PE}
+PE_coordinates <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/thomas_PE_coordinates.csv") #Import poison exon coordinates
+n_distinct(PE_coordinates$ensembl_exon_id) #548 PEs
+PE_coordinates = PE_coordinates %>% mutate(exonStart_0base = exon_chrom_start - 1) #make a 0base exon start site
+PE_coordinates = unite(PE_coordinates,col = PE_range,c("exon_chrom_start","exon_chrom_end"), #Make a range of the exon so I can filter out any exons with duplicate exon coordinates
+                       sep = ":",
+                       remove = FALSE)
+PE_coordinates = PE_coordinates %>% group_by(ensembl_gene_id) %>% 
+  distinct(PE_range, .keep_all = TRUE) %>% #removes any duplicate exons
+  ungroup
+
+SR_proteins = c("SRSF1","SRSF2","SRSF3","SRSF4","SRSF5","SRSF6","SRSF7","SRSF9","SRSF11")
+all_PE = tibble()
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_PE_SE"), eval(parse(text = paste0(i,"_SE_JCEC"))) %>%
+           left_join(PE_coordinates, by = c("geneSymbol" = "external_gene_name",
+                                              "GeneID" = "ensembl_gene_id",
+                                              "exonStart_0base" = "exonStart_0base",
+                                              "exonEnd" = "exon_chrom_end"),
+                      relationship = "many-to-one"))
+  assign(paste0(i,"_PE_SE"), eval(parse(text = paste0(i,"_PE_SE"))) %>%
+           filter(!is.na(ensembl_exon_id)) %>% 
+           mutate(Sample = i))
+}
+all_PE = EIF4A3_PE_SE %>% full_join(UPF1_PE_SE) %>% full_join(MAGOH_PE_SE) %>% 
+  full_join(SF3B1_PE_SE) %>% full_join(SF3B3_PE_SE) %>% full_join(EFTUD2_PE_SE) %>% full_join(SNRNP200_PE_SE) %>%
+  full_join(AQR_PE_SE) %>% full_join(RBM22_PE_SE) %>% full_join(SNRPC_PE_SE) %>% full_join(GNB2L1_PE_SE) %>%
+  full_join(SNRNP70_PE_SE) %>% full_join(PRPF3_PE_SE) %>% full_join(HNRNPK_PE_SE) %>% full_join(SF3A3_PE_SE) %>% 
+  full_join(PRPF4_PE_SE) %>% full_join(CDC40_PE_SE) %>% full_join(CDC5L_PE_SE) %>% full_join(U2AF1_PE_SE) %>% 
+  full_join(SF3A1_PE_SE)
+all_PE = all_PE %>% mutate(corec_ILD = IncLevelDifference * -1,
+                           SR = if_else(geneSymbol %in% SR_proteins,
+                                        TRUE,
+                                        FALSE))
+all_PE_sum = all_PE %>% group_by(Sample) %>% summarise(events = n(),
+                                                       PE = n_distinct(ensembl_exon_id),
+                                                       SR_events = sum(SR))
+SR_colors = c("TRUE" = "#76CEB5","FALSE" = "grey")
+PE_scatter = ggplot(data = all_PE)
+PE_scatter = PE_scatter + geom_jitter(aes(x = factor(Sample,levels = all_order),
+                                        y = corec_ILD,
+                                        color = SR),
+                                      position = position_jitterdodge()) +
+  scale_color_manual(values = SR_colors, labels = c("TRUE" = "SR Proteins","FALSE" = "Other")) +
+  scale_fill_manual(values = SR_colors, labels = c("TRUE" = "SR Proteins","FALSE" = "Other"))+
+  theme_bw() +
+  labs(title = "Poison Exon Inclusion",
+       x = "KD",
+       y = "▲PE Inclusion",
+       subtitle = "KD inclusion - WT inclusion",
+       fill = "Gene Type") +
+  theme(axis.text.x = element_text(angle = 30,vjust = 0.95,hjust = 1)) +
+  geom_boxplot(aes(x = Sample, y = corec_ILD, fill = SR),
+               alpha = 0.5,
+               outlier.shape = NA,
+               show.legend = F)
+PE_scatter
+ggsave("all_PE_SR_noted.pdf",
+       plot = PE_scatter,
+       units = "in",
+       height = 10,
+       width = 12,
+       dpi = 300,
+       device = cairo_pdf,
+       family = "Arial Unicode MS")
+```
+
+# Look at the changes in splicing of transcripts with TPM >5 in WT
+
+I am looking at the transcripts that have a mean TPM greater than or equal to 4 in WT samples. 
+First I'm going to import the data, and use biomart to get the gene IDs. 
+I'm using the list of genes with significant splicing changes and seeing how many are in the WT > 5 TPM filtered dataset.
+
+```{r import alltrans dataset and manipulate data}
+
+main_fig_list = c("MAGOH","EIF4A3","UPF1","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3")
+hmart = useMart("ensembl")
+hmart = useDataset("hsapiens_gene_ensembl", mart = hmart)
+all_WT_sig = tibble(Sample = character())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_WT5_alltrans"), 
+         read_csv(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/",
+                         i,"_WT5filt_alltrans.csv")))
+    assign(paste0(i,"_WT5_alltrans"), eval(parse(text = paste0(i,"_WT5_alltrans"))) %>% 
+           mutate(transID = str_remove(transcript_id,"\\..*")))
+  assign(paste0(i,"_listgenes"), getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                                       filters = "ensembl_transcript_id",
+                                       values = eval(parse(text = paste0(i,"_WT5_alltrans$transID"))),
+                                       mart = hmart))
+  assign(paste0(i,"_sig_combined"), eval(parse(text = paste0(i,"_sig_combined"))) %>% 
+           mutate(WT_5TPM = GeneID %in% eval(parse(text = paste0(i,"_listgenes$ensembl_gene_id"))),
+                  Sample = i))
+  all_WT_sig = all_WT_sig %>% full_join(eval(parse(text = paste0(i,"_sig_combined"))))
+}
+
+all_WT5_sum = all_WT_sig %>% group_by(Sample) %>% summarise(Sig = n(),
+                                                             WT_filter = sum(WT_5TPM),
+                                                             prop_WT5 = mean(WT_5TPM))
+all_WT5_sum = all_WT5_sum %>% pivot_longer(cols = c("Sig","WT_filter"),names_to = "Calc", values_to = "number")
+all_res = tibble(Sample = character(),P = numeric())
+all_WT5_alltrans = tibble(Sample = character())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_WT5_alltrans"), eval(parse(text = paste0(i,"_WT5_alltrans"))) %>% 
+           left_join(eval(parse(text = paste0(i,"_listgenes"))),
+                     by = c("transID" = "ensembl_transcript_id")) %>% 
+           mutate(sig_SE = ensembl_gene_id %in% eval(parse(text = paste0(i,"_sig_combined$GeneID"))),
+                  Sample = i))
+  assign(paste0(i,"_res"), wilcox.test(log2FoldChange ~ sig_SE, data = eval(parse(text = paste0(i,"_WT5_alltrans"))),
+                                       exact = FALSE, alternative = "greater")) #predicts the no SE group will have a higher log2FC
+  all_res = all_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_res$p.value"))))
+  all_WT5_alltrans = all_WT5_alltrans %>% full_join(eval(parse(text = paste0(i,"_WT5_alltrans"))))
+}
+WT5_sum = all_WT5_alltrans %>% group_by(Sample,sig_SE) %>% summarise(median = median(log2FoldChange),
+                                                                     number = n())
+all_res = all_res %>% mutate(P = signif(P, digits = 3))
+```
+
+Now that we have all of the data produced, I'm going to figure out how to visualize it. 
+I'm going to show the proportion of genes with significantly changing splice events are in the filtered WT list. 
+I also want to try and look at the log2FC of transcripts in the filtered WT list that do and do not undergo splicing changes.
+
+```{r}
+
+WT5_sig_bar = ggplot(data = all_WT5_sum)
+WT5_sig_bar = WT5_sig_bar + geom_col(aes(x = factor(Sample, levels = main_fig_list),
+                                         y = number, fill = Calc), position = position_dodge()) +
+  scale_fill_manual(labels = c("Sig" = "Significant Splicing Events",
+                                 "WT_filter" = "Events from genes with WT TPM > 5"),
+                      "Gene Categories",
+                      values = met.brewer("Navajo")) +
+  theme_bw() +
+  labs(y = "Genes with Significant Splicing Events",
+       x = "KD") +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.9, hjust = 0.8))
+WT5_sig_bar 
+ggsave("Significant_and_WT_5TPM.pdf",
+       plot = WT5_sig_bar,
+       device = pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+WT5_prop = ggplot(data = all_WT5_sum %>% distinct(Sample,.keep_all = T))
+WT5_prop = WT5_prop + geom_col(aes(x = factor(Sample, levels = main_fig_list),
+                                   y = prop_WT5)) +
+    theme_bw() +
+  labs(y = "Proportion of significant splicing events from WT TPM>5 genes",
+       x = "KD") +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.9, hjust = 0.8))
+WT5_prop 
+
+#Plot the log2FC of the ones undergoing splicing changes or not
+dens_colors = c("TRUE" = "#78C3E3", "FALSE" = "#DD5577")
+WT5_FC = ggplot(data = all_WT5_alltrans)
+WT5_FC = WT5_FC + geom_density(aes(x = log2FoldChange, fill = sig_SE),
+                               alpha = 0.6,
+                               color = "#38182F",
+                               linewidth = 1,
+                               show.legend = F) +
+  xlim(-5,5) +
+  theme_bw() +
+  theme(strip.background = element_blank()) +
+  geom_vline(data = WT5_sum, aes(xintercept = median, color = sig_SE), show.legend = FALSE, linetype = "dashed") +
+  scale_color_manual(values = dens_colors) +
+  scale_fill_manual(values = dens_colors, labels = c("TRUE" = "Significant SE changes",
+                                                              "FALSE" = "No SE changes")) +
+  geom_label(data = WT5_sum %>% filter(sig_SE == "TRUE"), 
+            aes(x = median - 1.7, y = 0.5, color = sig_SE, label = round(median, digits = 3)),
+            show.legend = F) +
+  geom_label(data = WT5_sum %>% filter(sig_SE == "FALSE"),
+            aes(x = median + 1.7, y = 0.5, color = sig_SE, label = round(median, digits = 3)),
+            show.legend = F) +
+  geom_label(data = WT5_sum %>% filter(sig_SE == "TRUE"), 
+            aes(x = -3, y = 0.3, color = sig_SE, label = paste0("Δ SE =", number)),
+            show.legend = F) +
+  geom_label(data = WT5_sum %>% filter(sig_SE == "FALSE"),
+            aes(x = -3.5, y = 0.2, color = sig_SE, label = paste0("no Δ SE = ", number)),
+            show.legend = F) +
+  geom_label(data = all_res, aes(x = -3, y = 0.9, label = P), color = "black") +
+  facet_wrap(vars(factor(Sample, levels = main_fig_list)),ncol = 3)
+WT5_FC #This is formatted to look god for the PDF, not necessarily for the HTML notebook
+library(Cairo)
+ggsave("WT5_FC.pdf",
+       plot = WT5_FC,
+       device = cairo_pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
+The previous analyses were to look at what proportion of the splicing events were in highly expressed genes. 
+I will instead look at the proportion of highly expressed genes that have alternative splicing events going on.
+
+```{r}
+WT5_sum = WT5_sum %>% group_by(Sample) %>% mutate(tot = sum(number),
+                                                  prop = number/tot)
+
+
+#Filtering to gene level comparison
+all_WT5_genelevel = all_WT5_alltrans %>% group_by(Sample) %>% distinct(ensembl_gene_id, .keep_all = TRUE)
+WT5_sum_genelevel = all_WT5_genelevel %>% group_by(Sample,sig_SE) %>% 
+  summarise(median = median(log2FoldChange),
+                            number = n()) %>% 
+  group_by(Sample) %>% 
+  mutate(tot = sum(number),
+         prop = number/tot) %>% 
+  left_join(Sample_complex,by = "Sample")
+
+Complex_colors = c("Catalytic" = "#1a264f","Early" = "#cc2027","NA" = "grey")
+WT5_genelevel_prop = ggplot(data = WT5_sum_genelevel %>% filter(sig_SE == "TRUE"))
+WT5_genelevel_prop = WT5_genelevel_prop + geom_point(aes(x = factor(Sample, levels = all_order),
+                                                       y = prop,
+                                                       color = Splice_Stage),
+                                                     size = 3) +
+  geom_text_repel(aes(x = Sample,
+                y = prop,
+                label = paste0(number,"/",tot)),
+             show.legend = F, color = "black") + #Shows the number of transcripts that represent the total (i.e. 1)
+  scale_color_manual(values = Complex_colors) +
+  theme_bw() +
+  labs(x = element_blank(),
+       y = "Proportion of Genes",
+       title = "Proportion of highly expressed genes undergoing AS")
+WT5_genelevel_prop
+ggsave("WT5_AS_genelevel_proption.pdf",
+       plot = WT5_genelevel_prop,
+       device = pdf,
+       height = 12,
+       width = 12,
+       units = "in",
+       dpi = 300)
+```
+
+# Combined Novel and Annotated Summary
+
+I am going to combine the annotated splice events summary and novel event summary.
+The point is to look at what fraction of the total annotated events are significant and the ratio of novel to total events.
+
+```{r}
+#### Organize the Data ####
+all_events = Combined_sum_JCEC %>% full_join(Novel_Event_sum, by = c("EventType" = "Event",
+                                                                            "Sample")) %>% 
+  rename(NovelEvents = n) #Combine the annotated and novel splice site counts table
+all_events_summary = all_events %>% group_by(Sample) %>% 
+  summarise(total_ann = sum(TotalEventsJCEC),
+            sig_ann = sum(SignificantEventsJCEC),
+            total_novel = sum(NovelEvents)) %>% 
+  rename(Significant = sig_ann,
+         Novel = total_novel) %>% 
+  left_join(Sample_complex,by = "Sample") %>% 
+  left_join(read_depth,by = "Sample") %>% 
+  mutate(Sig_norm = Significant/Avg_millions,
+         Novel_norm = Novel/Avg_millions)
+all_events_summary = all_events_summary %>% 
+  pivot_longer(cols = c(Sig_norm,Novel_norm),
+               names_to = "Type",
+               values_to = "Number")
+
+all_events_plot = ggplot(data = all_events_summary)
+all_events_plot = all_events_plot + geom_point(aes(x = factor(Sample, levels = all_order),
+                                                   y = log10(Number),
+                                                   shape = factor(Type,
+                                                                  levels = c("Sig_norm","Novel_norm"),
+                                                                  labels = c("Sig_norm" = "Annotated",
+                                                                             "Novel_norm" = "Novel")),
+                                                   color = Splice_Stage),
+                                               size = 3) +
+  scale_color_manual(values = Complex_colors) +
+  theme_bw()+
+  labs(x = element_blank(),
+       y = "Log10(Splice events/ million reads)",
+       color = "Spliceosome Stage",
+       shape = "Type of splice event")
+all_events_plot
+ggsave("Sign_and_novel_events.pdf",
+       plot = all_events_plot,
+       device = pdf,
+       height = 12,
+       width = 12,
+       units = "in",
+       dpi = 300)
+
+```
+
+# Examination of disease samples
+I am going to look at the output of rMATS from disease causing mutations in PRPF31 and PRPF8.
+Both diseases cause Retinitis Pigmentosa. 
+
+```{r}
+Disease_samples = c("PRPF8_RP","PRPF31_RP")
+all_disease_sig = tibble(Sample = character())
+all_disease_novel = tibble(Sample = character())
+for (i in Disease_samples) {
+  print(i)
+  
+   assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #import the AQR skipped exon data based on JCEC
+  
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           group_by(GeneID) %>% 
+           filter(PValue < 0.01))
+  assign(paste0(i,"_3SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/A3SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 3' Splice Site
+  assign(paste0(i,"_3SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_3SS_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "A3SS")
+  
+  assign(paste0(i,"_5SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/A5SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 5' Splice Site
+  assign(paste0(i,"_5SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_5SS_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "A5SS")
+  
+  assign(paste0(i,"_MXE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/MXE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the mutually exclusive exons
+  assign(paste0(i,"_MXE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_MXE_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "MXE")
+  
+    assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the skipped exons
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "SE")
+  
+    assign(paste0(i,"_RI_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/RI.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the Retained Introns
+  assign(paste0(i,"_RI_sig_JCEC"),
+         eval(parse(text = paste0(i,"_RI_JCEC"))) %>% 
+           filter(PValue < 0.01)) %>%  #Filter to significant transcripts
+    mutate(Type = "RI")
+  
+  assign(paste0(i,"_sig_combined"),
+         eval(parse(text = paste0(i,"_SE_sig_JCEC"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_3SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_5SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_MXE_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_RI_sig_JCEC")))) %>% 
+    mutate(Sample = i))
+  
+  write_csv(eval(parse(text = paste0(i,"_sig_combined"))),
+            file = paste0("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/",
+                          i,
+                          "_annotated_AS.csv"))
+  all_disease_sig = all_disease_sig %>% full_join(eval(parse(text = paste0(i,"_sig_combined")))) %>% 
+    mutate(Event_type = "Significant")
+  
+    assign(paste0(i,"_novel_SE"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/fromGTF.novelSpliceSite.SE.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T))
+    assign(paste0(i,"_novel_RI"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.RI.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Retained Introns
+    
+  assign(paste0(i,"_novel_MXE"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.MXE.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Mutually Exclusive Exons
+    
+  assign(paste0(i,"_novel_A3SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A3SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Import the novel alternate 3' splice sites
+  
+  assign(paste0(i,"_novel_A5SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A5SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE))
+  assign(paste0(i,"_novel_RI"),
+         eval(parse(text = paste0(i,"_novel_RI"))) %>% 
+           mutate(Sample = i,
+                  Event = "RI"))
+  
+  assign(paste0(i,"_novel_MXE"),
+         eval(parse(text = paste0(i,"_novel_MXE"))) %>% 
+           mutate(Sample = i,
+                  Event = "MXE"))
+    
+  assign(paste0(i,"_novel_A5SS"),
+         eval(parse(text = paste0(i,"_novel_A5SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A5SS"))
+      
+  assign(paste0(i,"_novel_A3SS"),
+         eval(parse(text = paste0(i,"_novel_A3SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A3SS"))
+  assign(paste0(i,"_novel_events"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A3SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A5SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_RI")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_MXE")))))
+  all_disease_novel = all_disease_novel %>% full_join(eval(parse(text = paste0(i,"_novel_events")))) %>% 
+    mutate(Event_type = "Novel")
+}
+all_disease_events = all_disease_novel %>% full_join(all_disease_sig)
+write_csv(all_disease_events,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/disease_all_splicing_events")
+```
+
