@@ -33,3 +33,5 @@ done
 cp "$dir"/IsoformSwitch/Combined_analysis/*.R ./IsoformSwitchAnalyzeR/Combined_ISAR_analysis.R
 
 cp "$dir"/rMATS/*.Rmd "$GR_dir"/rMATS #adds in all of the R markdown workbooks from the rMATS folder. Final plots from rMATS are in ENCODE_rMATS_comparison file
+
+echo Done syncing scripts

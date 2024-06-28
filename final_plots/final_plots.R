@@ -23,7 +23,8 @@
 #6/10/2024: Added in the disease AS dataplot
 #6/12-15/2024: Added the no PTC NMD plots
 #6/24/2024: Made the plot for the PTC+,MANE,and Other isoforms from the same genes. 
-#Test change for github repository
+#6/27/2024: Made sure the disease datasets are using the right data. 
+#6/28/2024: Filtered the PTC and other isoform plot to just TSL 1/2
 
 library(readr)
 library(readxl)
@@ -2818,7 +2819,6 @@ ggsave("NMD_MANE_vs_PTC_vs_LA_noNMD.pdf",
        dpi = 300)
 
 #### Look at MANE vs PTC vs Other genes from the same set of genes ####
-
 PTC_genes = getBM(attributes = "ensembl_gene_id",
                   filters = "ensembl_transcript_id",
                   values = PTC_list$transID,
@@ -2869,7 +2869,8 @@ all_PTC_boxplot = all_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels =
             show.legend = F,
             position = position_dodge2(width = 0.9),
             size = 7,
-            direction = "y") +
+            direction = "y",
+            segment.color = NA) +
   geom_label(data = all_PTC_FC_summary,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
@@ -2886,6 +2887,62 @@ all_PTC_boxplot = all_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels =
 all_PTC_boxplot
 ggsave("PTC_genes_all_isoforms.pdf",
        plot = all_PTC_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#Filter to only the TSL 1 or 2 isoforms
+PTC_isoforms_tsl = getBM(attributes = c("ensembl_transcript_id","transcript_tsl"),
+                         filters = "ensembl_transcript_id",
+                         values = all_PTC_foldchange$ENST.ID,
+                         mart = ensembl)
+PTC_isoforms_tsl = PTC_isoforms_tsl %>% distinct(ensembl_transcript_id, .keep_all = TRUE)
+PTC_isoforms_tsl = all_PTC_foldchange %>% left_join(PTC_isoforms_tsl, by = c("ENST.ID" = "ensembl_transcript_id"), relationship = "many-to-many")
+PTC_isoforms_tsl = PTC_isoforms_tsl %>% mutate(TSL = str_extract(transcript_tsl,"tsl."))
+PTC_isoforms_tsl = PTC_isoforms_tsl %>% filter(TSL == "tsl1" | TSL == "tsl2")
+PTC_tsl_summary = PTC_isoforms_tsl %>% group_by(Sample, Type) %>% summarise(med = median(log2FoldChange),
+                                                                            n = n())
+PTC_TSL_boxplot = ggplot(PTC_isoforms_tsl)
+PTC_TSL_boxplot = PTC_TSL_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = Type),
+                                                 position = position_dodge2(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = PTC_tsl_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -2.5,
+                      color = Type,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = PTC_tsl_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Type,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "TSL 1 or 2") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+PTC_TSL_boxplot
+ggsave("PTC_genes_TSL12_all_isoforms.pdf",
+       plot = PTC_TSL_boxplot,
        width = 40,
        height = 10,
        units = "in",
