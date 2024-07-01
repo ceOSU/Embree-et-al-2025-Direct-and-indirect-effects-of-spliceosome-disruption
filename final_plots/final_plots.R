@@ -2948,3 +2948,13 @@ ggsave("PTC_genes_TSL12_all_isoforms.pdf",
        units = "in",
        device = pdf,
        dpi = 300)
+
+####ID genes with AS events in multiple samples####
+shared_AS = AQR_sig_AS_genes %>% inner_join(EFTUD2_sig_AS_genes) %>% inner_join(SF3B1_sig_AS_genes) %>%
+  inner_join(SF3B3_sig_AS_genes) %>% distinct(GeneID)
+shared_AS_annotation = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id",
+                                            "transcript_biotype"),
+                             filters = "ensembl_gene_id",
+                             values = shared_AS$GeneID,
+                             mart = ensembl)
+Shared_AS_NMD_iso = shared_AS_annotation %>% filter(transcript_biotype == "nonsense_mediated_decay")

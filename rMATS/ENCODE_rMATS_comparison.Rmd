@@ -82,6 +82,8 @@ library(ggrepel)
  
  5/31/2024: Added in the PRPF8 and PRPF6 datasets
  
+ 7/1/2024: Removed some code that have updated versions in the NMD TPM script, and added in a venn diagram of significantly changing splice events
+ 
  # Introduction
 
  
@@ -1785,53 +1787,6 @@ ggsave("Significant_and_WT_5TPM.pdf",
        units = "in",
        dpi = 300)
 
-WT5_prop = ggplot(data = all_WT5_sum %>% distinct(Sample,.keep_all = T))
-WT5_prop = WT5_prop + geom_col(aes(x = factor(Sample, levels = main_fig_list),
-                                   y = prop_WT5)) +
-    theme_bw() +
-  labs(y = "Proportion of significant splicing events from WT TPM>5 genes",
-       x = "KD") +
-  theme(axis.text.x = element_text(angle = 30, vjust = 0.9, hjust = 0.8))
-WT5_prop 
-
-#Plot the log2FC of the ones undergoing splicing changes or not
-dens_colors = c("TRUE" = "#78C3E3", "FALSE" = "#DD5577")
-WT5_FC = ggplot(data = all_WT5_alltrans)
-WT5_FC = WT5_FC + geom_density(aes(x = log2FoldChange, fill = sig_SE),
-                               alpha = 0.6,
-                               color = "#38182F",
-                               linewidth = 1,
-                               show.legend = F) +
-  xlim(-5,5) +
-  theme_bw() +
-  theme(strip.background = element_blank()) +
-  geom_vline(data = WT5_sum, aes(xintercept = median, color = sig_SE), show.legend = FALSE, linetype = "dashed") +
-  scale_color_manual(values = dens_colors) +
-  scale_fill_manual(values = dens_colors, labels = c("TRUE" = "Significant SE changes",
-                                                              "FALSE" = "No SE changes")) +
-  geom_label(data = WT5_sum %>% filter(sig_SE == "TRUE"), 
-            aes(x = median - 1.7, y = 0.5, color = sig_SE, label = round(median, digits = 3)),
-            show.legend = F) +
-  geom_label(data = WT5_sum %>% filter(sig_SE == "FALSE"),
-            aes(x = median + 1.7, y = 0.5, color = sig_SE, label = round(median, digits = 3)),
-            show.legend = F) +
-  geom_label(data = WT5_sum %>% filter(sig_SE == "TRUE"), 
-            aes(x = -3, y = 0.3, color = sig_SE, label = paste0("Δ SE =", number)),
-            show.legend = F) +
-  geom_label(data = WT5_sum %>% filter(sig_SE == "FALSE"),
-            aes(x = -3.5, y = 0.2, color = sig_SE, label = paste0("no Δ SE = ", number)),
-            show.legend = F) +
-  geom_label(data = all_res, aes(x = -3, y = 0.9, label = P), color = "black") +
-  facet_wrap(vars(factor(Sample, levels = main_fig_list)),ncol = 3)
-WT5_FC #This is formatted to look god for the PDF, not necessarily for the HTML notebook
-library(Cairo)
-ggsave("WT5_FC.pdf",
-       plot = WT5_FC,
-       device = cairo_pdf,
-       width = 12,
-       height = 10,
-       units = "in",
-       dpi = 300)
 ```
 The previous analyses were to look at what proportion of the splicing events were in highly expressed genes. 
 I will instead look at the proportion of highly expressed genes that have alternative splicing events going on.
@@ -1873,6 +1828,27 @@ ggsave("WT5_AS_genelevel_proption.pdf",
        height = 12,
        width = 12,
        units = "in",
+       dpi = 300)
+
+#Euler plot of highly expressed genes undergoing AS
+AQR_AS_genes = all_WT5_genelevel %>% filter(Sample == "AQR") %>% distinct(ensembl_gene_id)
+EFTUD2_AS_genes = all_WT5_genelevel %>% filter(Sample == "EFTUD2") %>% distinct(ensembl_gene_id)
+SF3B1_AS_genes = all_WT5_genelevel %>% filter(Sample == "SF3B1") %>% distinct(ensembl_gene_id)
+SF3B3_AS_genes = all_WT5_genelevel %>% filter(Sample == "SF3B3") %>% distinct(ensembl_gene_id)
+
+set.seed(1)
+AS_gene_euler = list("SF3B1" = SF3B1_AS_genes$ensembl_gene_id,
+         "EFTUD2" = EFTUD2_AS_genes$ensembl_gene_id,
+         "AQR" = AQR_AS_genes$ensembl_gene_id,
+         "SF3B3" = SF3B3_AS_genes$ensembl_gene_id)
+AS_euler_plot = plot(euler(AS_gene_euler), quantities = T, shape = "ellipse",main = "Highly Expressed Genes with Alternate Splicing")
+AS_euler_plot
+ggsave("Highly_expressed_genes_with_AS.pdf",
+       plot = AS_euler_plot,
+       width = 12,
+       height = 10,
+       units = "in",
+       device = pdf,
        dpi = 300)
 ```
 
