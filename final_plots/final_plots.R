@@ -2950,8 +2950,14 @@ ggsave("PTC_genes_TSL12_all_isoforms.pdf",
        dpi = 300)
 
 ####ID genes with AS events in multiple samples####
-shared_AS = AQR_sig_AS_genes %>% inner_join(EFTUD2_sig_AS_genes) %>% inner_join(SF3B1_sig_AS_genes) %>%
-  inner_join(SF3B3_sig_AS_genes) %>% distinct(GeneID)
+shared_AS = MAGOH_sig_AS_genes %>% inner_join(EIF4A3_sig_AS_genes) %>% inner_join(UPF1_sig_AS_genes) %>% 
+  inner_join(RBM22_sig_AS_genes) %>% inner_join(AQR_sig_AS_genes) %>% inner_join(SNRNP200_sig_AS_genes) %>% 
+  inner_join(EFTUD2_sig_AS_genes) %>% inner_join(SF3B1_sig_AS_genes) %>% inner_join(SF3B3_sig_AS_genes) %>% 
+  inner_join(SNRPC_sig_AS_genes) %>% inner_join(SNRNP70_sig_AS_genes) %>% inner_join(PRPF8_sig_AS_genes) %>% 
+  inner_join(PRPF6_sig_AS_genes) %>% inner_join(CDC5L_sig_AS_genes) %>% inner_join(SF3A1_sig_AS_genes) %>% 
+  inner_join(SF3A3_sig_AS_genes) %>% inner_join(U2AF1_sig_AS_genes) %>% inner_join(CDC40_sig_AS_genes) %>% 
+  inner_join(PRPF3_sig_AS_genes) %>% inner_join(PRPF4_sig_AS_genes) %>% inner_join(GNB2L1_sig_AS_genes) %>%
+  distinct(GeneID)
 shared_AS_annotation = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id",
                                             "transcript_biotype"),
                              filters = "ensembl_gene_id",
