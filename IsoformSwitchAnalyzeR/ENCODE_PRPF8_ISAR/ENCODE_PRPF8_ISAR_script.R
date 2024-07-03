@@ -111,7 +111,7 @@ all_switch_cons = extractTopSwitches(
 library(dplyr)
 rawTPM = PRPF8quant$abundance
 annotatedTPM = rawTPM %>% mutate(kdTPM = rowMeans(dplyr::select(rawTPM,2:3), na.rm = TRUE)) %>%
-  mutate(wtTPM = rowMeans(dplyr::select(rawTPM, 4:5), na.rm = TRUE))
+  mutate(wtTPM = rowMeans(dplyr::select(rawTPM, 4:5), na.rm = TRUE)) #Make sure that these refer to the right columns for the data
 library(biomaRt)
 listMarts()
 ensembl <- useMart("ensembl")
@@ -137,6 +137,7 @@ PTC_MANE_TPM = PTC_MANE_TPM %>% dplyr::select(1:7,9:12) %>% mutate(type = "MANE"
 PRPF8_TPM = PTC_TPM %>% full_join(Novel_TPM) %>% full_join(PTC_MANE_TPM)
 write_csv(PRPF8_TPM, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/Combined_analysis/PRPF8_TPM.csv")
 
+
 ####Comparing the TPMs of different classes of novel transcript####
 all_novel = all_switch %>% filter(IF2 <= 0) #X transcripts
 all_novel_tpm = all_novel %>% inner_join(rawTPM, by = "isoform_id")
@@ -153,13 +154,13 @@ all_switch = extractTopSwitches( #Pulls all switching genes
   n = NA,
   extractGenes = FALSE,
   sortByQvals = FALSE)
-count(all_switch,switchConsequencesGene) #FALSE = 2598 TRUE = 282
+count(all_switch,switchConsequencesGene) #FALSE =  TRUE = 
 ORFanalysis = SwitchAndORF$orfAnalysis
-count(ORFanalysis,PTC) #False = 5748 True = 1239 NA = 8708
+count(ORFanalysis,PTC) #False =  True =  NA = 
 ORFanalysis = ORFanalysis %>% mutate(Switch = isoform_id %in% all_switch$isoform_id)
-count(ORFanalysis,Switch) #False = 12185 True= 2880 ->Same number as switching transcripts
+count(ORFanalysis,Switch) #False =  True= ->Same number as switching transcripts
 switching_ORF = ORFanalysis %>% filter(Switch == TRUE)
-count(switching_ORF,PTC) #False = 1344 TRUE = 170 NA =  1366
+count(switching_ORF,PTC) #False =  TRUE =  NA =  
 switching_ORF = switching_ORF %>% left_join(all_switch, by = "isoform_id")
 
 length_plot = ggplot(data = switching_ORF)

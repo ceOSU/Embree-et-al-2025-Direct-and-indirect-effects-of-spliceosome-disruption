@@ -25,6 +25,7 @@
 #6/24/2024: Made the plot for the PTC+,MANE,and Other isoforms from the same genes. 
 #6/27/2024: Made sure the disease datasets are using the right data. 
 #6/28/2024: Filtered the PTC and other isoform plot to just TSL 1/2
+#7/3/2024: Removed some excess code and fixed some of the TPM code
 
 library(readr)
 library(readxl)
@@ -46,76 +47,8 @@ all_GOI = c("UPF1","EIF4A3","MAGOH",
             "GNB2L1",
             "SNRNP70","SNRPC")
 Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","SNRPC","SNRNP70")
-TPM_names = tibble(all_GOI)
-TPM_names = TPM_names %>% mutate(all_GOI = as.factor(all_GOI))
 
-#Import Datasets
-for (i in TPM_names$all_GOI) {
-  print(i)
-  assign(i, read_csv(paste0(i,"_PTC_MANE_TPM.csv")))
-  assign(i,eval(parse(text = i)) %>% mutate(PTC = as.character(PTC),
-                                            Sample = i))
-}
-novel_TPM = read_csv("novel_NMD_TPM.csv")
 
-#Manipulate datasets
-library(dplyr)
-PTC_sum = tibble()
-for (i in TPM_names$all_GOI) {
-  print(i)
-  temp = eval(parse(text = i)) %>% group_by(PTC) %>% summarise(WT_TPM = sum(WTmean,na.rm = TRUE), KD_TPM = sum(KDmean,na.rm = TRUE),
-                                                               count = n(), Sample = i)
-  PTC_sum = PTC_sum %>% bind_rows(temp)
-}
-PTC_sum = PTC_sum %>% rename(WT = WT_TPM, KD = KD_TPM) %>% pivot_longer(cols = 2:3, values_to = "TPM", names_to = "Condition") %>% mutate(PTC = as.character(PTC))
-novel_TPM = novel_TPM %>% select(3:5) %>% rename(TPM = totalTPM) %>% mutate(PTC = "Novel", Condition = "KD")
-Combined = full_join(PTC_sum, novel_TPM)                                                      
-
-PRPF31_TPM = Combined %>% filter(Sample == "PRPF31_RPE" | Sample == "PRPF31_IPSC")
-Combined = Combined %>% filter(Sample != "PRPF31_RPE" & Sample != "PRPF31_IPSC" & Sample != "KIF1C") #I'm dropping KIF1C because we only need one control
-
-#Make plot
-Combined = Combined %>% mutate(Sample = fct_relevel(Sample,"SNRPC","GNB2L1","SNRNP70","PRPF3","SNRNP200","HNRNPK","SF3A3",
-                                                    "PRPF4","CDC40","EFTUD2","CDC5L","U2AF1","MAGOH","RBM22","SF3B1",
-                                                    "SF3A1","SF3B3","AQR","EIF4A3","UPF1","AGO1"))
-
-TPM_plot = ggplot(data = Combined)
-TPM_plot = TPM_plot + geom_col(aes(x = Condition, y = log10(TPM), fill = PTC), position= "dodge") +
-  facet_wrap(vars(Sample), ncol = 5) +
-  scale_fill_manual(values = met.brewer("Egypt",n =3),
-                    labels = c("FALSE" = "MANE", "Novel", "TRUE" = "PTC"))
-TPM_plot = TPM_plot + labs(fill = "Transcript Type",
-                           y = "Log10(Total TPM)") +
-  theme_bw() +
-  theme(strip.background = element_blank(),
-        panel.grid.major.x = element_blank())
-TPM_plot
-ggsave("TPM_plot.pdf",
-       plot = TPM_plot,
-       device = pdf,
-       width = 12,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-PRPF31_plot = ggplot(data = PRPF31_TPM)
-PRPF31_plot = PRPF31_plot + geom_col(aes(x = Condition, y = log10(TPM), fill = PTC), position= "dodge") +
-  facet_wrap(vars(Sample)) +
-  scale_fill_manual(values = met.brewer("Egypt",n =3),
-                    labels = c("FALSE" = "MANE", "Novel", "TRUE" = "PTC"))
-PRPF31_plot = PRPF31_plot + labs(fill = "Transcript Type",
-                                 y = "Log10(Total TPM)") +
-  theme_bw() +
-  theme(strip.background = element_blank(),
-        panel.grid.major.x = element_blank())
-PRPF31_plot
-ggsave("PRPF31_TPM_plot.pdf",
-       plot = PRPF31_plot,
-       device = pdf,
-       width = 10,
-       height = 10,
-       units = "in",
-       dpi = 300)
 
 #### Histogram of Log2FC from WT filtered cells####
 hist_all_GOI = c("UPF1","AGO1","AQR","SF3B3","EIF4A3")
@@ -702,9 +635,9 @@ PTC_box = PTC_box +
                     breaks = c("wt","KDmean")) +
   theme_bw() +
   labs(x = "Sample",
-       y = "log10(TPM)",
+       y = "TPM",
        fill = "Treatment") +
-  coord_cartesian(y = c(0,10))
+  coord_cartesian(y = c(0,15))
 PTC_box
 ggsave("PTC_TPM_boxplot.pdf",
        plot = PTC_box,
@@ -730,9 +663,9 @@ novel_box = novel_box +
                                                    "FALSE" = "non-NMD")) +
   theme_bw() +
   labs(x = "Sample",
-       y = "log10(TPM)",
+       y = "TPM",
        fill = "Novel Isoform") +
-   coord_cartesian(y = c(0,10))
+   coord_cartesian(y = c(0,15))
 novel_box
 ggsave("Novel_TPM_boxplot.pdf",
        plot = novel_box,
@@ -762,27 +695,65 @@ all_TPM_summary = all_TPM_restructure %>% group_by(Sample, Type, Treatment) %>%
   summarise(med = median(TPM),
             total = sum(TPM))
 
-TPM_summary_colors = c("MANE" = "#096B72",
-                       "Novel_Stable" = "#85FFE2",
-                       "Novel_NMD" = "#F87666",
-                       "PTC" = "#990D35")
-total_TPM_plot = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd"))
-total_TPM_plot = total_TPM_plot + geom_point(aes(x = factor(Sample, levels = all_GOI),
+TPM_summary_colors = c("MANE" = "#663171",
+                       "Novel_Stable" = "#096B72",
+                       "Novel_NMD" = "#990D35",
+                       "PTC" = "#ea7428")
+total_TPM_PTC = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd") %>%
+                               filter(Type == "MANE" | Type == "PTC"))
+total_TPM_PTC = total_TPM_PTC + geom_point(aes(x = factor(Sample, levels = all_GOI),
                                                  y = total,
                                                  color = Type),
                                              size = 3) +
   scale_color_manual(values = TPM_summary_colors) +
   labs(x = "Depletion",
        y = "Total TPM",
-       title = "Total TPM of novel and endogenous transcripts") +
-  theme_bw()
-total_TPM_plot
-ggsave("total_TPM_plot.pdf",
-       plot = total_TPM_plot,
+       title = "Annotated isoforms",
+       color = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+total_TPM_PTC
+ggsave("total_TPM_annotated.pdf",
+       plot = total_TPM_PTC,
        width = 12,
-       height = 12,
+       height = 10,
        units = "in",
        device = pdf,
+       dpi = 300)
+
+total_TPM_novel = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd") %>%
+                         filter(Type == "Novel_NMD" | Type == "Novel_Stable"))
+total_TPM_novel = total_TPM_novel + geom_point(aes(x = factor(Sample, levels = all_GOI),
+                                               y = total,
+                                               color = Type),
+                                           size = 3) +
+  scale_color_manual(values = TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "Total TPM",
+       title = "Novel Isoforms",
+       color = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+total_TPM_novel
+ggsave("total_TPM_novel.pdf",
+       plot = total_TPM_novel,
+       width = 12,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+total_TPM_SBS = (total_TPM_PTC | total_TPM_novel) +
+  plot_layout(guides = "collect",
+              axes = "collect") +
+  labs(caption = "TPM from KD samples") 
+total_TPM_SBS
+ggsave("Total_TPM_SBS.pdf",
+       plot = total_TPM_SBS,
+       device = pdf,
+       height = 10,
+       width = 22,
+       units = "in",
        dpi = 300)
 
 #### Look at TPM of PE NMD isoforms ####
