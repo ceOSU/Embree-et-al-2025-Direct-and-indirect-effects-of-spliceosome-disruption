@@ -25,7 +25,7 @@
 #6/24/2024: Made the plot for the PTC+,MANE,and Other isoforms from the same genes. 
 #6/27/2024: Made sure the disease datasets are using the right data. 
 #6/28/2024: Filtered the PTC and other isoform plot to just TSL 1/2
-#7/3/2024: Removed some excess code and fixed some of the TPM code
+#7/3/2024: Removed some excess code and fixed some of the TPM code. Also added in "main figure" plots with reduced number of samples
 
 library(readr)
 library(readxl)
@@ -612,8 +612,8 @@ all_TPM = all_TPM %>% pivot_longer(c(kdTPM,wtTPM),names_to = "Treatment",values_
 
 SBS_color = c("wt" = "#EABA0B",
               "kd" = "#ea7428",
-              "TRUE" = "#eda058",
-              "FALSE" = "#c270b7")
+              "TRUE" = "#990D35",
+              "FALSE" = "#6ACDD8")
 
 PTC_box = ggplot(data = all_TPM %>% filter(type == "PTC"))
 PTC_box = PTC_box + 
@@ -671,7 +671,7 @@ ggsave("Novel_TPM_boxplot.pdf",
        plot = novel_box,
        device = pdf,
        units = "in",
-       width = 10,
+       width = 12,
        height = 10,
        dpi = 300)
 
@@ -686,6 +686,8 @@ ggsave("Side-by-side_TPM.pdf",
        units = "in",
        dpi = 300)
 
+
+
 #Look at the total TPM of each category
 all_TPM_restructure = all_TPM %>% mutate(NMD_Causing = str_replace(NMD_Causing,"TRUE","NMD")) %>% 
   unite(type,NMD_Causing,col = "Type",sep = "_",na.rm = TRUE) %>% 
@@ -696,7 +698,7 @@ all_TPM_summary = all_TPM_restructure %>% group_by(Sample, Type, Treatment) %>%
             total = sum(TPM))
 
 TPM_summary_colors = c("MANE" = "#663171",
-                       "Novel_Stable" = "#096B72",
+                       "Novel_Stable" = "#6ACDD8",
                        "Novel_NMD" = "#990D35",
                        "PTC" = "#ea7428")
 total_TPM_PTC = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd") %>%
@@ -753,6 +755,136 @@ ggsave("Total_TPM_SBS.pdf",
        device = pdf,
        height = 10,
        width = 22,
+       units = "in",
+       dpi = 300)
+
+#make the version just with the main figures
+main_fig_PTC_box = ggplot(data = all_TPM %>% filter(type == "PTC" & Sample %in% Pres_KD))
+main_fig_PTC_box = main_fig_PTC_box + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = TPM,
+                   fill = factor(Treatment, levels = c("wt","kd"))),
+               outlier.shape = 21,
+               outlier.alpha = 0.75,
+               outlier.colour = NA,
+               position =  position_dodge2(width = 0.9),
+               width = 0.8) +
+  scale_fill_manual(values = SBS_color,
+                    labels = c("kd" = "KD",
+                               "wt" = "WT"),
+                    breaks = c("wt","kd"))+
+  scale_color_manual(values = SBS_color,
+                     labels = c("kd" = "KD",
+                                "wt" = "WT"),
+                     breaks = c("wt","KDmean")) +
+  theme_bw() +
+  labs(x = "Sample",
+       y = "TPM",
+       fill = "Treatment") +
+  coord_cartesian(y = c(0,15))
+main_fig_PTC_box
+ggsave("main_fig_PTC_TPM_boxplot.pdf",
+       plot = main_fig_PTC_box,
+       device = pdf,
+       units = "in",
+       height = 10,
+       width = 8,
+       dpi = 300)
+
+main_fig_novel_box = ggplot(data = all_TPM %>% filter(type == "Novel" & Treatment == "kd" & Sample %in% Pres_KD))
+main_fig_novel_box = main_fig_novel_box +
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = TPM,
+                   fill = NMD_Causing),
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               position = position_dodge2(width = 0.9),
+               width = 0.8) +
+  scale_fill_manual(values = SBS_color, labels = c("TRUE" = "NMD",
+                                                   "FALSE" = "non-NMD")) +
+  scale_color_manual(values = SBS_color, labels = c("TRUE" = "NMD",
+                                                    "FALSE" = "non-NMD")) +
+  theme_bw() +
+  labs(x = "Sample",
+       y = "TPM",
+       fill = "Novel Isoform") +
+  coord_cartesian(y = c(0,15))
+main_fig_novel_box
+ggsave("main_fig_Novel_TPM_boxplot.pdf",
+       plot = main_fig_novel_box,
+       device = pdf,
+       units = "in",
+       width = 8,
+       height = 10,
+       dpi = 300)
+
+main_fig_SBS = (main_fig_PTC_box | main_fig_novel_box) + plot_layout(guides = "collect",
+                                                                     axes = "collect")
+main_fig_SBS
+ggsave("main_fig_SBS_TPM.pdf",
+       plot = main_fig_SBS,
+       device = pdf,
+       height = 10,
+       width = 18,
+       units = "in",
+       dpi = 300)
+
+
+main_fig_total_TPM_PTC = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd" & Sample %in% Pres_KD) %>%
+                         filter(Type == "MANE" | Type == "PTC"))
+main_fig_total_TPM_PTC = main_fig_total_TPM_PTC + geom_point(aes(x = factor(Sample, levels = all_GOI),
+                                               y = total,
+                                               color = Type),
+                                           size = 3) +
+  scale_color_manual(values = TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "Total TPM",
+       title = "Annotated isoforms",
+       color = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+main_fig_total_TPM_PTC
+ggsave("main_fig_total_TPM_annotated.pdf",
+       plot = main_fig_total_TPM_PTC,
+       width = 8,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+main_fig_total_TPM_novel = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd" & Sample %in% Pres_KD) %>%
+                           filter(Type == "Novel_NMD" | Type == "Novel_Stable"))
+main_fig_total_TPM_novel = main_fig_total_TPM_novel + geom_point(aes(x = factor(Sample, levels = all_GOI),
+                                                   y = total,
+                                                   color = Type),
+                                               size = 3) +
+  scale_color_manual(values = TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "Total TPM",
+       title = "Novel Isoforms",
+       color = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1))
+main_fig_total_TPM_novel
+ggsave("main_fig_total_TPM_novel.pdf",
+       plot = main_fig_total_TPM_novel,
+       width = 8,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+main_fig_total_TPM_SBS = (main_fig_total_TPM_PTC | main_fig_total_TPM_novel) +
+  plot_layout(guides = "collect",
+              axes = "collect") +
+  labs(caption = "TPM from KD samples") 
+main_fig_total_TPM_SBS
+ggsave("main_fig_total_TPM_SBS.pdf",
+       plot = main_fig_total_TPM_SBS,
+       device = pdf,
+       height = 10,
+       width = 18,
        units = "in",
        dpi = 300)
 
@@ -2724,7 +2856,7 @@ NMD_LA_Boxplot = NMD_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = a
   coord_cartesian(y = c(-4,4)) +
   theme_bw()
 NMD_LA_Boxplot
-ggsave("NMD_MAND_vs_LA_noNMD.pdf",
+ggsave("NMD_MANE_vs_LA_noNMD.pdf",
        plot = NMD_LA_Boxplot,
        device = pdf,
        width = 40,
@@ -2732,17 +2864,71 @@ ggsave("NMD_MAND_vs_LA_noNMD.pdf",
        units = "in",
        dpi = 300)
 
-##Look at NMD MANE vs PTC vs LA no NMD##
-PTC_only = PTC_combined %>% filter(PTC == "TRUE") %>% select(1:8,10,12)
-PTC_NMDmane_noNMD = NMD_LA_MANE %>% full_join(PTC_only)
-PTC_NMDmane_noNMD_summary = PTC_NMDmane_noNMD %>% group_by(Sample,Type) %>% 
+MainFig_NMD_LA_Boxplot = ggplot(data = NMD_LA_MANE %>% filter(Sample %in% Pres_KD))
+MainFig_NMD_LA_Boxplot = MainFig_NMD_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                   y = log2FoldChange,
+                                                   fill = Type),
+                                               position = position_dodge2(width = 0.9),
+                                               width = 0.8,
+                                               outlier.shape = 21,
+                                               outlier.alpha = 0.5,
+                                               outlier.colour = NA,
+                                               linewidth = 1) +
+  scale_fill_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
+                                                       "No_NMD" = "Non NMD")) +
+  scale_color_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
+                                                        "No_NMD" = "Non NMD")) +
+  geom_text(data = NMD_LA_MANE_summary %>% filter(Type == "NMD" & Sample %in% Pres_KD),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 3,
+                label = signif(P,digits = 3)),
+            size = 8,
+            color = "black") +
+  geom_label(data = NMD_LA_MANE_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Type,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_LA_MANE_summary %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = -2.5,
+                color = Type,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  labs(x = "Depletion",
+       y = "log2(Fold Change)",
+       fill = "Transcript Type",
+       title = "MANE NMD transcripts vs LA no-NMD")+
+  coord_cartesian(y = c(-4,4)) +
+  theme_bw()
+MainFig_NMD_LA_Boxplot
+ggsave("MainFig_NMD_MANE_vs_LA_noNMD.pdf",
+       plot = MainFig_NMD_LA_Boxplot,
+       device = pdf,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+##Look at MANE vs PTC vs LA no NMD##
+PTC_only = PTC_combined %>% mutate(Type = if_else(PTC == "TRUE",
+                                                  "PTC",
+                                                  "MANE")) %>%
+  select(1:8,10,12)
+PTC_MANE_noNMD = LA_nonNMD_MANE_only %>% full_join(PTC_only)
+PTC_MANE_noNMD_summary = PTC_NMDmane_noNMD %>% group_by(Sample,Type) %>% 
   summarise(n = n(),
             med = median(log2FoldChange))
 
-NMD_PTC_LA_colors = c("NMD" = "#E2C050",
+NMD_PTC_LA_colors = c("MANE" = "#663171",
                       "No_NMD" = "#FE64A3",
                       "PTC" = "#EA7428")
-NMD_PTC_LA_Boxplot = ggplot(data = PTC_NMDmane_noNMD)
+NMD_PTC_LA_Boxplot = ggplot(data = PTC_MANE_noNMD)
 NMD_PTC_LA_Boxplot = NMD_PTC_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                                                    y = log2FoldChange,
                                                    fill = Type),
@@ -2758,7 +2944,7 @@ NMD_PTC_LA_Boxplot = NMD_PTC_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, le
   scale_color_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
                                                         "No_NMD" = "Non NMD",
                                                         "PTC"="PTC NMD")) +
-  geom_label(data = PTC_NMDmane_noNMD_summary,
+  geom_label(data = PTC_MANE_noNMD_summary,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
                  color = Type,
@@ -2766,7 +2952,7 @@ NMD_PTC_LA_Boxplot = NMD_PTC_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, le
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 3) +
-  geom_text(data = PTC_NMDmane_noNMD_summary,
+  geom_text(data = PTC_MANE_noNMD_summary,
             aes(x = factor(Sample, levels = all_GOI),
                 y = -2.5,
                 color = Type,
@@ -2777,14 +2963,61 @@ NMD_PTC_LA_Boxplot = NMD_PTC_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, le
   labs(x = "Depletion",
        y = "log2(Fold Change)",
        fill = "Transcript Type",
-       title = "MANE NMD transcripts vs PTC NMD transcripts vs LA no-NMD")+
+       title = "MANE isoforms vs PTC isoforms vs LA no-NMD transcripts")+
   coord_cartesian(y = c(-4,4)) +
   theme_bw()
 NMD_PTC_LA_Boxplot
-ggsave("NMD_MANE_vs_PTC_vs_LA_noNMD.pdf",
+ggsave("MANE_vs_PTC_vs_LA_noNMD.pdf",
        plot = NMD_PTC_LA_Boxplot,
        device = pdf,
        width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+NMD_PTC_LA_Boxplot_mainfig = ggplot(data = PTC_MANE_noNMD %>% filter(Sample %in% Pres_KD))
+NMD_PTC_LA_Boxplot_mainfig = NMD_PTC_LA_Boxplot_mainfig + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                           y = log2FoldChange,
+                                                           fill = Type),
+                                                       position = position_dodge2(width = 0.9),
+                                                       width = 0.8,
+                                                       outlier.shape = 21,
+                                                       outlier.alpha = 0.5,
+                                                       outlier.colour = NA,
+                                                       linewidth = 1) +
+  scale_fill_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
+                                                           "No_NMD" = "Non NMD",
+                                                           "PTC" = "PTC NMD")) +
+  scale_color_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
+                                                            "No_NMD" = "Non NMD",
+                                                            "PTC"="PTC NMD")) +
+  geom_label(data = PTC_MANE_noNMD_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Type,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  geom_text(data = PTC_MANE_noNMD_summary %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = -2.5,
+                color = Type,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 7) +
+  labs(x = "Depletion",
+       y = "log2(Fold Change)",
+       fill = "Transcript Type",
+       title = "MANE isoforms vs PTC isoforms vs LA no-NMD transcripts")+
+  coord_cartesian(y = c(-4,4)) +
+  theme_bw()
+NMD_PTC_LA_Boxplot_mainfig
+ggsave("main_fig_MANE_vs_PTC_vs_LA_noNMD.pdf",
+       plot = NMD_PTC_LA_Boxplot_mainfig,
+       device = pdf,
+       width = 20,
        height = 10,
        units = "in",
        dpi = 300)
@@ -2915,6 +3148,51 @@ PTC_TSL_boxplot
 ggsave("PTC_genes_TSL12_all_isoforms.pdf",
        plot = PTC_TSL_boxplot,
        width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+mainfig_PTC_TSL_boxplot = ggplot(PTC_isoforms_tsl %>% filter(Sample %in% Pres_KD))
+mainfig_PTC_TSL_boxplot = mainfig_PTC_TSL_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = Type),
+                                                 position = position_dodge2(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = PTC_tsl_summary %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -2.5,
+                      color = Type,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = PTC_tsl_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Type,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "TSL 1 or 2") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+mainfig_PTC_TSL_boxplot
+ggsave("main_fig_PTC_genes_TSL12_all_isoforms.pdf",
+       plot = mainfig_PTC_TSL_boxplot,
+       width = 20,
        height = 10,
        units = "in",
        device = pdf,
