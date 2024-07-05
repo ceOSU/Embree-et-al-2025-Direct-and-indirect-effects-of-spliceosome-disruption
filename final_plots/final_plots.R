@@ -420,6 +420,58 @@ ggsave("noNMD_boxplot_FC.pdf",
        units = "in",
        dpi = 300)
 
+mainFig_noNMD_boxplot = ggplot(data = all_noNMD %>% filter(Sample %in% Pres_KD))
+mainFig_noNMD_boxplot = mainFig_noNMD_boxplot + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = isoform),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1)+
+  scale_fill_manual(values = noNMD_colors) +
+  scale_color_manual(values = noNMD_colors)+
+  geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = Sample,
+                 y = 3,
+                 label = signif(P,digits = 3)),
+             size = 5,
+             alpha = 0.75)+
+  geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = isoform,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = -3.5,
+                 color = isoform,
+                 label = n),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 5,
+             alpha = 0.75) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Transcript",
+       title = "No NMD biotype")+
+  coord_cartesian(y = c(-4,4))
+mainFig_noNMD_boxplot
+# Last saved and modified on 7/5/2024
+ggsave("mainFig_noNMD_boxplot_FC.pdf",
+       device = pdf,
+       plot = mainFig_noNMD_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
 #Repeat with the full list of transcripts from Manu's noNMD genes
 MS_noNMD_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/MS_noNMD_transcripts.csv")
 MS_noNMD_transcripts = MS_noNMD_transcripts %>% mutate(isoform = if_else(!is.na(transcript_mane_select),
