@@ -111,7 +111,7 @@ all_switch_cons = extractTopSwitches(
 library(dplyr)
 rawTPM = PRPF6quant$abundance
 annotatedTPM = rawTPM %>% mutate(kdTPM = rowMeans(dplyr::select(rawTPM,2:3), na.rm = TRUE)) %>%
-  mutate(wtTPM = rowMeans(dplyr::select(rawTPM, 4:5), na.rm = TRUE))
+  mutate(wtTPM = rowMeans(dplyr::select(rawTPM, 4:5), na.rm = TRUE)) #Make sure that these refer to the right columns for the data
 library(biomaRt)
 listMarts()
 ensembl <- useMart("ensembl")
@@ -136,6 +136,7 @@ PTC_MANE_TPM = MANE_TPM %>% inner_join(Stringent_PTC, by = c("isoform_id" = "tra
 PTC_MANE_TPM = PTC_MANE_TPM %>% dplyr::select(1:7,9:12) %>% mutate(type = "MANE")
 PRPF6_TPM = PTC_TPM %>% full_join(Novel_TPM) %>% full_join(PTC_MANE_TPM)
 write_csv(PRPF6_TPM, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/Combined_analysis/PRPF6_TPM.csv")
+
 
 ####Comparing the TPMs of different classes of novel transcript####
 all_novel = all_switch %>% filter(IF2 <= 0) #X transcripts
