@@ -69,12 +69,21 @@ listEnsemblArchives()
 ensembl <- useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
 ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
 attributes <- listAttributes(ensembl)
-listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","external_transcript_name"),
+listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","ensembl_gene_id"),
                    filters = "ensembl_transcript_id",
                    values = counts$ENSTID,
                    mart = ensembl)
 
-listgenes <- inner_join(counts, listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
+anno_genes = counts %>% filter(str_detect(ENSTID,"ENST")) %>%
+  left_join(listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
+AQR_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_AQR_ISAR/AQR_novel_iso_features.csv")
+novel_genes = counts %>% filter(str_detect(ENSTID,"MST")) %>% 
+  full_join(AQR_novel_iso_features, by = c("ENSTID" = "isoform_id"))
+full_genelist = anno_genes %>% full_join(novel_genes, by = c("ENSTID",
+                                                             "ensembl_gene_id" = "gene_id",
+                                                             "external_gene_name" = "gene_name",
+                                                             "SRR14844828","SRR14844829","SRR14846211","SRR14846212",
+                                                             "wtMean","kdMean","ensembl_transcript_id_version"))
 
 ####Differential expression analysis#####
 
@@ -97,7 +106,7 @@ plotPCA(vsd, intgroup = "genotype")
 PCA = plotPCA(vsd, intgroup = "genotype")+
   geom_text_repel(aes(label=name))
 PCA
-ggsave("AQR_PCA.pdf",
+ggsave("AQR_novel_PCA.pdf",
        plot = PCA,
        device = pdf,
        width = 5,
@@ -143,17 +152,13 @@ head( res.sig[ order( res.sig$log2FoldChange ), ] )
 head( res.sig[ order( res.sig$log2FoldChange ), ],20 )
 tail( res.sig[ order( res.sig$log2FoldChange ), ],20 )
 summary(res.sig$log2FoldChange)
-#log2fc range : -8.31343 to +8.821
+#log2fc range : -23.6439 to +24.1336
 
 #Exporting files
 write.csv(as.data.frame(res_counts), file = "KDvsWT_full_results.csv")
 write.csv(as.data.frame(res.sig), file = "2KDvsWT_sig_results.csv")
 write.csv(counts(ddscounts, normalized = T), file = "KDvsWT_normalized_counts.csv")
 
-res_counts1 = read.csv("KDvsWT_full_results.csv", header = T)
-res_counts1 = column_to_rownames(res_counts1, "X")
-head(counts)
-res_counts1=row_to_names(res_counts1, row_number=1, remove_row = TRUE, remove_rows_above = TRUE)
 head(counts)
 up.trans <- as.data.frame(subset(res.sig, res.sig$log2FoldChange> 0))
 
@@ -196,7 +201,9 @@ plot(euler(s), quantities = TRUE,
 alltrans <- as.data.frame(res_counts)
 alltrans = alltrans %>% filter(!is.na(padj)) %>% 
   rownames_to_column(var = "transcriptID_version")
-alltrans = alltrans %>% mutate(ENST.ID = str_remove(transcriptID_version,"\\..*")) 
+alltrans = alltrans %>% mutate(ENST.ID = if_else(str_detect(transcriptID_version,"ENST"),
+                                                 str_remove(transcriptID_version,"\\..*"),
+                                                 transcriptID_version)) 
 
 alltransbiotype <- getBM(attributes = c("external_gene_name","ensembl_gene_id",
                                         "ensembl_transcript_id","transcript_biotype",
@@ -206,7 +213,14 @@ alltransbiotype <- getBM(attributes = c("external_gene_name","ensembl_gene_id",
                          mart = ensembl)
 
 
-alltransbioNMD <- left_join(alltrans,alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Check this for gene FC
+alltrans_annotated = alltrans %>% filter(str_detect(ENST.ID,"ENST")) %>% 
+  left_join(alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Add in the biomart info for the annotated isoforms
+alltrans_novel = alltrans %>% filter(str_detect(ENST.ID,"MST")) %>% 
+  left_join(AQR_novel_iso_features,by = c("ENST.ID" = "isoform_id"))#add in the annotation from ISAR for the novel isoforms
+alltransbioNMD = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
+                                                                        "lfcSE","stat","pvalue","padj",
+                                                                        "ensembl_gene_id" = "gene_id",
+                                                                        "external_gene_name" = "gene_name")) #Combine the two tables together
 
 #### CDF plot comparing NMD biotype ####
 write(alltransbiotype$ensembl_transcript_id_version, "tids.txt")
@@ -222,7 +236,7 @@ NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotyp
 NMDBio_cdf
 
 #### analysis with robert's PTC+ and PTC- list ####
-ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR/ENST_PTC-EPI-TFG.txt")
+ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR_K562/ENST_PTC-EPI-TFG.txt")
 
 
 alltransPTC<-inner_join(alltrans, ENST_PTC.EPI.TFG, by = "ENST.ID")
@@ -247,48 +261,6 @@ plot_colors = c("FALSE" = "#673272", "TRUE" = "#EA7428",
                 "PE" = "#76CEB5", "MANE" = "#BCB29F")
 
 
-
-#### Determine the effect on NMD when Alternately spliced genes are removed (Delete this section if rMATS hasn't been done) ####
-ASgenes_AQR <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_AQR/ASgenes_AQR.csv", 
-                             delim = ";", escape_double = FALSE, trim_ws = TRUE)
-ASgenes_AQR = ASgenes_AQR %>% select(GeneID,geneSymbol)
-sPTC_gene <- getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
-                   filters = "ensembl_transcript_id",
-                   values = sPTC$ENST.ID,
-                   mart = ensembl)
-sPTC_gene = sPTC_gene %>% inner_join(sPTC, by = c("ensembl_transcript_id" = "ENST.ID"))
-sPTC_AS = sPTC_gene %>% anti_join(ASgenes_AQR, by = c("ensembl_gene_id" = "GeneID"))
-count(sPTC_AS, PTC) #PTC false=  PTC true= 
-alltransAS = inner_join(alltrans, sPTC_AS, by = c("ENST.ID" = "ensembl_transcript_id"))
-count(alltransAS, PTC) # PTC false  PTC true
-
-
-asPTC_res <- wilcox.test(log2FoldChange ~ PTC, data = alltransAS,
-                         exact = FALSE, alternative = "less")
-head(alltransAS)
-asPTC_res #p-vlaue = 
-
-asPTC_cdf = ggplot(alltransAS, aes(log2FoldChange, colour=PTC))+
-  stat_ecdf(linewidth=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = met.brewer("Java",2)) +
-  labs(y = "Cumulative Frequency", title = "AQR KD vs WT", subtitle = "Non-AS transcripts")
-asPTC_cdf = asPTC_cdf + annotate("text", x=-2.5,y=1, label = "p-value = ") +
-  annotate("text", x = -2.5, y = 0.95, label = "PTC+ = ") +
-  annotate("text", x = -2.5, y = 0.9, label = "PTC- = ") +
-  geom_vline(xintercept = 0, color = "grey") + 
-  geom_hline(yintercept = 0.5, color = "grey")
-asPTC_cdf
-ggsave("AQR_K562_asPTC_CDF.pdf", 
-       plot = asPTC_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
 
 ##sPTC analysis using the MANE list
 sPTC_MANE = read.csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
@@ -348,7 +320,7 @@ alltrans_MANE = alltrans_annotated %>% filter(!is.na(transcript_mane_select)) %>
 NMD_factors <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/NMD_factors.xlsx")
 
 AQR_NMD = alltrans_MANE %>% inner_join(NMD_factors, by = c("external_gene_name" = "NMDfactor"))
-write.csv(AQR_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/AQR_NMDfactor.csv",row.names = FALSE)
+write.csv(AQR_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/AQR_nk_NMDfactor.csv",row.names = FALSE)
 
 
 ####Look at effect on the MANE transcript of spliceosome factors under study####
@@ -359,156 +331,11 @@ write.csv(AQR_SC_impact, "AQR_splicing_impact.csv",row.names = FALSE)
 
 
 
-#### Pull the TPM of genes for the NMD TPM graph ####
-#Check WT and KD are refering to the right columns in listgenes
-full_tpm = listgenes %>% rowwise() %>%  mutate(WTmean = mean(c_across(1:2)), KDmean = mean(c_across(3:4))) %>% ungroup() #Check that WT and KD are referring to the right columns
+#### Pull the TPM of genes for the NMD TPM graph #### NEEDS FIXING
+#Check WT and KD are refering to the right columns in full_genelist
+full_tpm = full_genelist %>% rowwise() %>%  mutate(WTmean = mean(c_across(1:2)), KDmean = mean(c_across(3:4))) %>% ungroup() #Check that WT and KD are referring to the right columns
 full_tpm = full_tpm %>% mutate(ENST.ID = str_remove(ensembl_transcript_id_version, "\\..*"))
-full_tpm = full_tpm %>% select(9:10)
 PTC_tpm = full_tpm %>% right_join(sPTC_MANE, by = c("ENST.ID" = "transID"))
-PTC_tpm = PTC_tpm %>% select(1:3,5,6)
+PTC_tpm = PTC_tpm %>% select(5,6)
 write_csv(PTC_tpm, "AQR_PTC_MANE_TPM.csv")
-write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_PTC_MANE_TPM.csv")
-
-#### Look at the effect when only WT filtering####
-WTcounts <-as.data.frame(txi.kallisto.tsv$counts)
-
-#Filtering out transcripts with mean tpm<1
-WTcounts$mean=rowMeans(WTcounts[,c("SRR14846211","SRR14846212")], na.rm=TRUE) #Filter WT samples
-WTcounts=filter(WTcounts, mean>=1)
-
-WTlistgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id_version","external_transcript_name"),
-                     filters = "ensembl_transcript_id_version",
-                     values = rownames(WTcounts),
-                     mart = ensembl)
-
-WTcounts$ensembl_transcript_id_version<-rownames(WTcounts)
-WTlistgenes <- inner_join(WTcounts, WTlistgenes, by = "ensembl_transcript_id_version")
-
-WTddscounts.table <- DESeqDataSetFromTximport(txi.kallisto.tsv, colData, formula(~ genotype))
-WTddscounts.table = WTddscounts.table[rownames(WTddscounts.table) %in% rownames(WTcounts)]
-WTddscounts <- DESeq(WTddscounts.table)
-
-#Make sure data is associated with correct genotype
-colData(WTddscounts)
-#PCAplots
-WTvsd <- vst(WTddscounts, blind = FALSE)
-WTrld <- rlog(WTddscounts)
-plotPCA(WTvsd, intgroup = "genotype")
-#with sample labels
-plotPCA(WTvsd, intgroup = "genotype")+
-  geom_text_repel(aes(label=name))
-
-#####1st pairwise comparison
-as.data.frame(colData(WTddscounts))
-WTres_counts <- results(WTddscounts, contrast = c("genotype","KD","WT"))
-WTres_counts
-mcols(WTres_counts, use.names = TRUE)
-
-#significant results
-WTres.sig <- WTres_counts[ which(WTres_counts$padj < 0.05), ]
-hist(WTres.sig$pvalue, col = "green1")
-head(WTres.sig)
-plotMA(WTres_counts, padj = TRUE, ylim=c(-6,6), main ="MA plot: WT vs KD")
-
-plotMA(WTres.sig)
-sum( WTres.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=
-sum( WTres.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=
-head(WTres.sig$log2FoldChange > 0)
-
-head( WTres.sig[ order( WTres.sig$log2FoldChange ), ] )
-head( WTres.sig[ order( WTres.sig$log2FoldChange ), ],20 )
-tail( WTres.sig[ order( WTres.sig$log2FoldChange ), ],20 )
-summary(WTres.sig$log2FoldChange)
-#log2fc range : - to +
-
-WTtranscriptids=row.names(WTres.sig)
-WTtranscriptids1=as.vector(WTtranscriptids)
-WTtrans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                       "external_gene_name","transcript_biotype"),
-                        filters = "ensembl_transcript_id_version",
-                        values = WTtranscriptids1,
-                        mart = ensembl)
-WTsig.trans <- as.data.frame(WTres.sig)
-#total significantly changing genes = 
-WTsigNMD=intersect(row.names(WTsig.trans), NMD.trans$ensembl_transcript_id_version)
-#intersect between NMDgenes and significantly changing genes in RNAseq(wt vs kd) = 
-WTre.alltrans<-as.data.frame(WTres_counts)
-
-WTalltrans <- as.data.frame(WTres_counts)
-WTalltrans = WTalltrans %>% filter(!is.na(padj))
-WTalltrans<-WTalltrans[order(rownames(WTalltrans)),]
-WTalltrans = rownames_to_column(WTalltrans, var = "transcript_id")
-write_csv(WTalltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_WTfilt_alltrans.csv")
-write_csv(alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_DBfilt_alltrans.csv")
-write_csv(alltransSPTC_MANE,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_PTC_alltrans.csv")
-
-####Make a list of the genes filtered to WT>5TPM ####
-WT5counts <-as.data.frame(txi.kallisto.tsv$counts)
-
-#Filtering out transcripts with mean tpm<5
-WT5counts$mean=rowMeans(WT5counts[,c("SRR14846211","SRR14846212")], na.rm=TRUE) #Filter WT samples
-WT5counts=filter(WT5counts, mean>=5)
-
-WT5listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id_version","external_transcript_name"),
-                      filters = "ensembl_transcript_id_version",
-                      values = rownames(WT5counts),
-                      mart = ensembl)
-
-WT5counts$ensembl_transcript_id_version<-rownames(WT5counts)
-WT5listgenes <- inner_join(WT5counts, WT5listgenes, by = "ensembl_transcript_id_version")
-
-WT5ddscounts.table <- DESeqDataSetFromTximport(txi.kallisto.tsv, colData, formula(~ genotype))
-WT5ddscounts.table = WT5ddscounts.table[rownames(WT5ddscounts.table) %in% rownames(WT5counts)]
-WT5ddscounts <- DESeq(WT5ddscounts.table)
-
-#Make sure data is associated with correct genotype
-colData(WT5ddscounts)
-#PCAplots
-WT5vsd <- vst(WT5ddscounts, blind = FALSE)
-WT5rld <- rlog(WT5ddscounts)
-plotPCA(WT5vsd, intgroup = "genotype")
-#with sample labels
-plotPCA(WT5vsd, intgroup = "genotype")+
-  geom_text_repel(aes(label=name))
-
-#####1st pairwise comparison
-as.data.frame(colData(WT5ddscounts))
-WT5res_counts <- results(WT5ddscounts, contrast = c("genotype","KD","WT"))
-WT5res_counts
-mcols(WT5res_counts, use.names = TRUE)
-
-#significant results
-WT5res.sig <- WT5res_counts[ which(WT5res_counts$padj < 0.05), ]
-hist(WT5res.sig$pvalue, col = "green1")
-head(WT5res.sig)
-plotMA(WT5res_counts, padj = TRUE, ylim=c(-6,6), main ="MA plot: WT vs KD")
-
-plotMA(WT5res.sig)
-sum( WT5res.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=5328
-sum( WT5res.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=3505
-head(WT5res.sig$log2FoldChange > 0)
-
-head( WT5res.sig[ order( WT5res.sig$log2FoldChange ), ] )
-head( WT5res.sig[ order( WT5res.sig$log2FoldChange ), ],20 )
-tail( WT5res.sig[ order( WT5res.sig$log2FoldChange ), ],20 )
-summary(WT5res.sig$log2FoldChange)
-#log2fc range : --11.6032 to +7.7247
-
-WT5transcriptids=row.names(WT5res.sig)
-WT5transcriptids1=as.vector(WT5transcriptids)
-WT5trans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                        "external_gene_name","transcript_biotype"),
-                         filters = "ensembl_transcript_id_version",
-                         values = WT5transcriptids1,
-                         mart = ensembl)
-WT5sig.trans <- as.data.frame(WT5res.sig)
-#total significantly changing genes = 
-WT5sigNMD=intersect(row.names(WT5sig.trans), NMD.trans$ensembl_transcript_id_version)
-#intersect between NMDgenes and significantly changing genes in RNAseq(WT5 vs kd) = 
-WT5re.alltrans<-as.data.frame(WT5res_counts)
-
-WT5alltrans <- as.data.frame(WT5res_counts)
-WT5alltrans = WT5alltrans %>% filter(!is.na(padj))
-WT5alltrans<-WT5alltrans[order(rownames(WT5alltrans)),]
-WT5alltrans = rownames_to_column(WT5alltrans, var = "transcript_id")
-write_csv(WT5alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_WT5filt_alltrans.csv")
+write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_nk_PTC_MANE_TPM.csv")
