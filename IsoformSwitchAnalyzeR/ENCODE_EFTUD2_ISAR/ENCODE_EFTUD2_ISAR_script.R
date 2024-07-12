@@ -158,6 +158,8 @@ EFTUD2_novel_sequence = extractSequence(switchAnalyzeRlist = novel_list,
                                      removeShortAAseq = FALSE,
                                      removeLongAAseq = FALSE,
                                      outputPrefix = "EFTUD2_novel")
+novel_annotations = novel_list$isoformFeatures %>% select(isoform_id,gene_id,gene_name,PTC)
+write_csv(novel_annotations,"EFTUD2_novel_iso_features.csv")
 
 #Look at transcript length
 count(all_switch,switchConsequencesGene) #FALSE = 1974 TRUE = 1104

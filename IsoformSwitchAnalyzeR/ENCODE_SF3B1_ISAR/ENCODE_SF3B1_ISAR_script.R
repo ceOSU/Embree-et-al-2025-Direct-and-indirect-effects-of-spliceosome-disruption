@@ -165,6 +165,8 @@ SF3B1_novel_sequence = extractSequence(switchAnalyzeRlist = novel_list,
                                      removeShortAAseq = FALSE,
                                      removeLongAAseq = FALSE,
                                      outputPrefix = "SF3B1_novel")
+novel_annotations = novel_list$isoformFeatures %>% select(isoform_id,gene_id,gene_name,PTC)
+write_csv(novel_annotations,"SF3B1_novel_iso_features.csv")
 
 #Look at transcript length
 all_switch = extractTopSwitches( #Pulls all switching genes

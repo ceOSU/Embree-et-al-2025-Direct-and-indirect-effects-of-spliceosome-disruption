@@ -1,7 +1,7 @@
 #Written by: Caleb Embree
 #Modified by: Caleb Embree
 #Modified on: 7/10/2024
-#Analyzing: AQR Kallisto results from transcriptome including novel transcripts
+#Analyzing: SF3B1 Kallisto results from transcriptome including novel transcripts
 
 #All packages already installed#
 #if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -13,12 +13,12 @@
 #BiocManager::install("pheatmap")
 
 #Things to use find and replace on
-# C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR_K562/novel_kallisto --> working directory of the project
-# SRR14846211 --> Sample ID of first WT sample
-# SRR14846212 --> Sample ID of second WT sample
-# SRR14844828 --> Sample ID of first KD sample
-# SRR14844829 --> Sample ID of second KD sample
-# AQR --> Ensemble name of your gene of interest
+# C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_SF3B1_K562_KO/novel_kallisto --> working directory of the project
+# SRR14842760 --> Sample ID of first WT sample
+# SRR14842761 --> Sample ID of second WT sample
+# SRR14838495 --> Sample ID of first KD sample
+# SRR14838496 --> Sample ID of second KD sample
+# SF3B1 --> Ensemble name of your gene of interest
 
 #Load all packages
 library(readxl)
@@ -39,13 +39,13 @@ library(tidyverse) #tidyverse should be loaded last so other packages don't mask
 
 #Load File containing sample types
 getwd()
-samples <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR_K562/AQR_K562_samples.xlsx")
+samples <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_SF3B1_K562_KO/SF3B1_K562_KO_samples.xlsx")
 View(samples)
 
 
 #### Load in the files ####
-files1 <- file.path("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR_K562/novel_kallisto","novel_koutput", samples$Run, "abundance.h5")
-names(files1) <- paste0(c("SRR14844828","SRR14844829","SRR14846211","SRR14846212"))
+files1 <- file.path("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_SF3B1_K562_KO/novel_kallisto","novel_koutput", samples$Run, "abundance.h5")
+names(files1) <- paste0(c("SRR14838495","SRR14838496","SRR14842760","SRR14842761"))
 files1
 
 #importing output files from each library to a compiled dataframe
@@ -55,8 +55,8 @@ head(txi.kallisto.tsv$counts)
 counts<-as.data.frame(txi.kallisto.tsv$counts)
 
 #Filtering out transcripts with mean tpm<1
-counts = counts %>% mutate(wtMean = rowMeans(dplyr::select(counts,c(SRR14846211,SRR14846212)), na.rm = TRUE) ,
-                           kdMean = rowMeans(dplyr::select(counts,c(SRR14844828,SRR14844829)), na.rm = TRUE)) %>% 
+counts = counts %>% mutate(wtMean = rowMeans(dplyr::select(counts,c(SRR14842760,SRR14842761)), na.rm = TRUE) ,
+                           kdMean = rowMeans(dplyr::select(counts,c(SRR14838495,SRR14838496)), na.rm = TRUE)) %>% 
   filter(wtMean >= 1 | kdMean >= 1) #Filter to the transcripts with TPM >= 1 in either WT or KD
 counts$ensembl_transcript_id_version<-rownames(counts)
 counts = counts %>% mutate(ENSTID = if_else(str_detect(ensembl_transcript_id_version,"ENST"), #If the isoform is annotated,
@@ -76,13 +76,13 @@ listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","
 
 anno_genes = counts %>% filter(str_detect(ENSTID,"ENST")) %>%
   left_join(listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
-AQR_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_AQR_ISAR/AQR_novel_iso_features.csv")
+SF3B1_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_SF3B1_ISAR/SF3B1_novel_iso_features.csv")
 novel_genes = counts %>% filter(str_detect(ENSTID,"MST")) %>% 
-  full_join(AQR_novel_iso_features, by = c("ENSTID" = "isoform_id"))
+  full_join(SF3B1_novel_iso_features, by = c("ENSTID" = "isoform_id"))
 full_genelist = anno_genes %>% full_join(novel_genes, by = c("ENSTID",
                                                              "ensembl_gene_id" = "gene_id",
                                                              "external_gene_name" = "gene_name",
-                                                             "SRR14844828","SRR14844829","SRR14846211","SRR14846212",
+                                                             "SRR14838495","SRR14838496","SRR14842760","SRR14842761",
                                                              "wtMean","kdMean","ensembl_transcript_id_version"))
 
 ####Differential expression analysis#####
@@ -106,7 +106,7 @@ plotPCA(vsd, intgroup = "genotype")
 PCA = plotPCA(vsd, intgroup = "genotype")+
   geom_text_repel(aes(label=name))
 PCA
-ggsave("AQR_novel_PCA.pdf",
+ggsave("SF3B1_novel_PCA.pdf",
        plot = PCA,
        device = pdf,
        width = 5,
@@ -168,15 +168,15 @@ transcriptids=row.names(res.sig)
 transcriptids1=as.vector(transcriptids)
 trans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
                                      "external_gene_name","transcript_biotype"),
-                filters = "ensembl_transcript_id_version",
-                values = transcriptids1,
-                mart = ensembl)
+                      filters = "ensembl_transcript_id_version",
+                      values = transcriptids1,
+                      mart = ensembl)
 sig.trans <- as.data.frame(res.sig)
 NMD.trans <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                 "external_gene_name","transcript_biotype"),
-                  filters = "transcript_biotype",
-                  values = "nonsense_mediated_decay",
-                  mart = ensembl)
+                                  "external_gene_name","transcript_biotype"),
+                   filters = "transcript_biotype",
+                   values = "nonsense_mediated_decay",
+                   mart = ensembl)
 #total NMD trans = 19738
 #total significantly changing genes = 11854
 sigNMD=intersect(row.names(sig.trans), NMD.trans$ensembl_transcript_id_version)
@@ -193,7 +193,7 @@ s <- list("NMD biotype" = set1,
           "Significant transcripts" = set2,
           "Upregulated transcripts" = set3)
 plot(euler(s), quantities = TRUE,
-     main="AQR knockout vs control")
+     main="SF3B1 knockout vs control")
 
 
 
@@ -216,7 +216,7 @@ alltransbiotype <- getBM(attributes = c("external_gene_name","ensembl_gene_id",
 alltrans_annotated = alltrans %>% filter(str_detect(ENST.ID,"ENST")) %>% 
   left_join(alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Add in the biomart info for the annotated isoforms
 alltrans_novel = alltrans %>% filter(str_detect(ENST.ID,"MST")) %>% 
-  left_join(AQR_novel_iso_features,by = c("ENST.ID" = "isoform_id"))#add in the annotation from ISAR for the novel isoforms
+  left_join(SF3B1_novel_iso_features,by = c("ENST.ID" = "isoform_id"))#add in the annotation from ISAR for the novel isoforms
 alltransbioNMD = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
                                                                         "lfcSE","stat","pvalue","padj",
                                                                         "ensembl_gene_id" = "gene_id",
@@ -232,11 +232,11 @@ NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotyp
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
   coord_cartesian(xlim = c(-3,3)) +
   scale_color_manual(values = met.brewer("Java",2)) +
-  labs(y = "Cumulative Frequency", title = "AQR KD vs WT", subtitle = "NMD biotype")
+  labs(y = "Cumulative Frequency", title = "SF3B1 KD vs WT", subtitle = "NMD biotype")
 NMDBio_cdf
 
 #### analysis with robert's PTC+ and PTC- list ####
-ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_AQR_K562/ENST_PTC-EPI-TFG.txt")
+ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_SF3B1_K562_KO/ENST_PTC-EPI-TFG.txt")
 
 
 alltransPTC<-inner_join(alltrans, ENST_PTC.EPI.TFG, by = "ENST.ID")
@@ -247,7 +247,7 @@ PTC_cdf = ggplot(alltransPTC, aes(log2FoldChange, colour=PTC.Status))+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
   coord_cartesian(xlim = c(-3,3)) +
   scale_color_manual(values = met.brewer("Java",2)) +
-  labs(y = "Cumulative Frequency", title = "AQR KD vs WT", subtitle = "PTC list")
+  labs(y = "Cumulative Frequency", title = "SF3B1 KD vs WT", subtitle = "PTC list")
 PTC_cdf
 
 resPTC <- wilcox.test(log2FoldChange ~ PTC.Status, data = alltransPTC,
@@ -278,7 +278,7 @@ MANE_sPTC_cdf = ggplot(alltransSPTC_MANE, aes(log2FoldChange, colour=PTC))+
   coord_cartesian(xlim = c(-3,3)) +
   scale_color_manual(values = plot_colors) +
   labs(y = "Cumulative Frequency")
-MANE_sPTC_cdf = MANE_sPTC_cdf + annotate("text", x=-2.5,y=1, label = "AQR KD vs WT", size = 5, hjust = 0) +
+MANE_sPTC_cdf = MANE_sPTC_cdf + annotate("text", x=-2.5,y=1, label = "SF3B1 KD vs WT", size = 5, hjust = 0) +
   annotate("text", x=-2.5,y=.95, label = "PTC containing and MANE transcripts", hjust =0) +
   annotate("text", x=-2.5,y=.9, label = "p-value = ", hjust = 0) +
   annotate("text", x = -2.5, y = 0.85, label = "PTC+ = ", hjust = 0) +
@@ -287,7 +287,7 @@ MANE_sPTC_cdf = MANE_sPTC_cdf + annotate("text", x=-2.5,y=1, label = "AQR KD vs 
   geom_hline(yintercept = 0.5, color = "grey") +
   theme(legend.position = c(0.85,0.1))
 MANE_sPTC_cdf
-ggsave("AQR_K562_sPTC_MANE_CDF.pdf", 
+ggsave("SF3B1_K562_sPTC_MANE_CDF.pdf", 
        plot = MANE_sPTC_cdf,
        scale = 1,
        width = 8,
@@ -295,7 +295,7 @@ ggsave("AQR_K562_sPTC_MANE_CDF.pdf",
        units = "in",
        device = "pdf",
        dpi = 300)
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/AQR_K562_sPTC_MANE_CDF.pdf", 
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/SF3B1_K562_sPTC_MANE_CDF.pdf", 
        plot = MANE_sPTC_cdf,
        scale = 1,
        width = 8,
@@ -319,15 +319,15 @@ alltrans_annotated = alltrans_full %>% left_join(alltrans_ensembl, by = c("ENST.
 alltrans_MANE = alltrans_annotated %>% filter(!is.na(transcript_mane_select)) %>% filter(transcript_mane_select != "")
 NMD_factors <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/NMD_factors.xlsx")
 
-AQR_NMD = alltrans_MANE %>% inner_join(NMD_factors, by = c("external_gene_name" = "NMDfactor"))
-write.csv(AQR_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/AQR_nk_NMDfactor.csv",row.names = FALSE)
+SF3B1_NMD = alltrans_MANE %>% inner_join(NMD_factors, by = c("external_gene_name" = "NMDfactor"))
+write.csv(SF3B1_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/SF3B1_nk_NMDfactor.csv",row.names = FALSE)
 
 
 ####Look at effect on the MANE transcript of spliceosome factors under study####
 Splicing_factors <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/Splicing_factors.csv")
 
-AQR_SC_impact = alltrans_MANE %>% inner_join(Splicing_factors, by = c("external_gene_name" = "Component"))
-write.csv(AQR_SC_impact, "AQR_splicing_impact.csv",row.names = FALSE)
+SF3B1_SC_impact = alltrans_MANE %>% inner_join(Splicing_factors, by = c("external_gene_name" = "Component"))
+write.csv(SF3B1_SC_impact, "SF3B1_splicing_impact.csv",row.names = FALSE)
 
 
 
@@ -335,5 +335,5 @@ write.csv(AQR_SC_impact, "AQR_splicing_impact.csv",row.names = FALSE)
 #Check WT and KD are refering to the right columns in full_genelist
 PTC_tpm = full_genelist %>% right_join(sPTC_MANE, by = c("ENSTID" = "transID"))
 PTC_tpm = PTC_tpm %>% select(5,6,8:10,14) %>% rename(PTC = PTC.y)
-write_csv(PTC_tpm, "AQR_PTC_MANE_TPM.csv")
-write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/AQR_nk_PTC_MANE_TPM.csv")
+write_csv(PTC_tpm, "SF3B1_PTC_MANE_TPM.csv")
+write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SF3B1_nk_PTC_MANE_TPM.csv")
