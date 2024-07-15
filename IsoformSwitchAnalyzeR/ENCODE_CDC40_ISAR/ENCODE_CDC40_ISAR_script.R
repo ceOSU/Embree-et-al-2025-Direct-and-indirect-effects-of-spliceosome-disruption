@@ -167,6 +167,8 @@ CDC40_novel_sequence = extractSequence(switchAnalyzeRlist = novel_list,
                                      removeShortAAseq = FALSE,
                                      removeLongAAseq = FALSE,
                                      outputPrefix = "CDC40_novel")
+novel_annotations = novel_list$isoformFeatures %>% select(isoform_id,gene_id,gene_name,PTC)
+write_csv(novel_annotations,"CDC40_novel_iso_features.csv")
 #Look at transcript length
 all_switch = extractTopSwitches( #Pulls all switching genes
   Switch_cons,
