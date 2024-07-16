@@ -217,14 +217,14 @@ alltrans_annotated = alltrans %>% filter(str_detect(ENST.ID,"ENST")) %>%
   left_join(alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Add in the biomart info for the annotated isoforms
 alltrans_novel = alltrans %>% filter(str_detect(ENST.ID,"MST")) %>% 
   left_join(EFTUD2_novel_iso_features,by = c("ENST.ID" = "isoform_id"))#add in the annotation from ISAR for the novel isoforms
-alltransbioNMD = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
-                                                                        "lfcSE","stat","pvalue","padj",
-                                                                        "ensembl_gene_id" = "gene_id",
-                                                                        "external_gene_name" = "gene_name")) #Combine the two tables together
+alltransbio = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
+                                                                     "lfcSE","stat","pvalue","padj",
+                                                                     "ensembl_gene_id" = "gene_id",
+                                                                     "external_gene_name" = "gene_name")) #Combine the two tables together
+write_csv(alltransbio,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/EFTUD2_NK_alltrans.csv")
 
 #### CDF plot comparing NMD biotype ####
-write(alltransbiotype$ensembl_transcript_id_version, "tids.txt")
-alltransbioNMD = alltransbioNMD %>% filter(transcript_biotype == "protein_coding" | transcript_biotype == "nonsense_mediated_decay")
+alltransbioNMD = alltransbio %>% filter(transcript_biotype == "protein_coding" | transcript_biotype == "nonsense_mediated_decay")
 
 NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotype))+
   stat_ecdf(linewidth=2)+

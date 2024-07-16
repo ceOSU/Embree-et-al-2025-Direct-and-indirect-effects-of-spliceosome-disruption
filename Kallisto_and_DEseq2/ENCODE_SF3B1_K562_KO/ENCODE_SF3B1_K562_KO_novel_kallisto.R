@@ -55,8 +55,8 @@ head(txi.kallisto.tsv$counts)
 counts<-as.data.frame(txi.kallisto.tsv$counts)
 
 #Filtering out transcripts with mean tpm<1
-counts = counts %>% mutate(wtMean = rowMeans(dplyr::select(counts,c(SRR14842760,SRR14842761)), na.rm = TRUE) ,
-                           kdMean = rowMeans(dplyr::select(counts,c(SRR14838495,SRR14838496)), na.rm = TRUE)) %>% 
+counts = counts %>% mutate(kdMean = rowMeans(dplyr::select(counts,c(SRR14842760,SRR14842761)), na.rm = TRUE) ,
+                           wtMean = rowMeans(dplyr::select(counts,c(SRR14838495,SRR14838496)), na.rm = TRUE)) %>% 
   filter(wtMean >= 1 | kdMean >= 1) #Filter to the transcripts with TPM >= 1 in either WT or KD
 counts$ensembl_transcript_id_version<-rownames(counts)
 counts = counts %>% mutate(ENSTID = if_else(str_detect(ensembl_transcript_id_version,"ENST"), #If the isoform is annotated,
@@ -88,7 +88,7 @@ full_genelist = anno_genes %>% full_join(novel_genes, by = c("ENSTID",
 ####Differential expression analysis#####
 
 #sampleinfo as dataframe
-colData <- data.frame(genotype = factor(c("KD","KD","WT","WT"))) #make sure these are in the right order that match your sample file
+colData <- data.frame(genotype = factor(c("WT","WT","KD","KD"))) #make sure these are in the right order that match your sample file
 
 
 ddscounts.table <- DESeqDataSetFromTximport(txi.kallisto.tsv, colData, formula(~ genotype))
@@ -217,14 +217,14 @@ alltrans_annotated = alltrans %>% filter(str_detect(ENST.ID,"ENST")) %>%
   left_join(alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Add in the biomart info for the annotated isoforms
 alltrans_novel = alltrans %>% filter(str_detect(ENST.ID,"MST")) %>% 
   left_join(SF3B1_novel_iso_features,by = c("ENST.ID" = "isoform_id"))#add in the annotation from ISAR for the novel isoforms
-alltransbioNMD = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
-                                                                        "lfcSE","stat","pvalue","padj",
-                                                                        "ensembl_gene_id" = "gene_id",
-                                                                        "external_gene_name" = "gene_name")) #Combine the two tables together
+alltransbio = alltrans_annotated %>% full_join(alltrans_novel,by = c("ENST.ID","transcriptID_version","baseMean","log2FoldChange",
+                                                                     "lfcSE","stat","pvalue","padj",
+                                                                     "ensembl_gene_id" = "gene_id",
+                                                                     "external_gene_name" = "gene_name")) #Combine the two tables together
+write_csv(alltransbio,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SF3B1_NK_alltrans.csv")
 
 #### CDF plot comparing NMD biotype ####
-write(alltransbiotype$ensembl_transcript_id_version, "tids.txt")
-alltransbioNMD = alltransbioNMD %>% filter(transcript_biotype == "protein_coding" | transcript_biotype == "nonsense_mediated_decay")
+alltransbioNMD = alltransbio %>% filter(transcript_biotype == "protein_coding" | transcript_biotype == "nonsense_mediated_decay")
 
 NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotype))+
   stat_ecdf(linewidth=2)+
