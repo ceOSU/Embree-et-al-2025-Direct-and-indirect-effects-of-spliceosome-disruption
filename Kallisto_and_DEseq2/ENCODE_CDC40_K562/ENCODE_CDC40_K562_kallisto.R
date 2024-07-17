@@ -173,7 +173,7 @@ listMarts()
 
 
 
-ensembl <- useMart("ensembl")
+ensembl <- useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
 
 
 

@@ -69,7 +69,7 @@ counts$ENSTID <- sub("\\..*", "", counts$ensembl_transcript_id_version)
 #######Finding isoform specific counts associated with a gene in the dataset.####
 
 listMarts()
-ensembl <- useMart("ensembl")
+ensembl <- useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
 ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
 attributes <- listAttributes(ensembl)
 listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","external_transcript_name"),

@@ -3265,3 +3265,134 @@ shared_AS_annotation = getBM(attributes = c("ensembl_gene_id","external_gene_nam
                              values = shared_AS$GeneID,
                              mart = ensembl)
 Shared_AS_NMD_iso = shared_AS_annotation %>% filter(transcript_biotype == "nonsense_mediated_decay")
+
+####Look at the effect of including novel isoforms in the kallisto transcriptome ####
+NK_samples = c("EFTUD2","AQR","SF3B1","SF3B3","CDC40")
+NK_full_alltrans = tibble(Sample = character())
+for (i in NK_samples) {
+  print(i)
+  assign(paste0(i,"_NK_alltrans"),
+         read_csv(paste0(i,"_NK_alltrans.csv")))
+  assign(paste0(i,"_NK_alltrans"),
+         eval(parse(text = paste0(i,"_NK_alltrans"))) %>% mutate(Sample = i,
+                                                                 Category = case_when(str_detect(ENST.ID,"MST") ~ "Novel",
+                                                                                      str_detect(ENST.ID,"ENST") & str_detect(transcript_mane_select,"NM") ~ "MANE",
+                                                                                      TRUE ~ "Other")))
+  NK_full_alltrans = NK_full_alltrans %>% full_join(eval(parse(text = paste0(i,"_NK_alltrans"))))
+}
+NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(n = n(),
+                                                                                med = median(log2FoldChange))
+
+NK_colors = c("MANE" = "#713E5A",
+              "Other" = "#DD7373",
+              "Novel" = "#C5E363")
+NK_full_boxplot = ggplot(NK_full_alltrans)
+NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                                     y = log2FoldChange,
+                                                                     fill = Category),
+                                                                 position = position_dodge2(width = 0.9),
+                                                                 width = 0.8,
+                                                                 outlier.shape = 21,
+                                                                 outlier.alpha = 0.5,
+                                                                 outlier.colour = NA,
+                                                                 linewidth = 1) +
+  scale_fill_manual(values = NK_colors) +
+  scale_color_manual(values = NK_colors) +
+  geom_text_repel(data = NK_full_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = Category,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = NK_full_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Category,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "all isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+NK_full_boxplot
+ggsave("novel_kallisto_all_isoforms.pdf",
+       plot = NK_full_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#Filter to only the genes on the NMD list
+PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
+                  filters = "ensembl_transcript_id",
+                  values = PTC_list$transID,
+                  mart = ensembl)
+NK_PTC_only = NK_full_alltrans %>% filter(ensembl_gene_id %in% PTC_genes$ensembl_gene_id)
+NK_PTC_only = NK_PTC_only %>% left_join(PTC_list, by = c("ENST.ID" = "transID",
+                                                         "external_gene_name" = "Gene"))
+NK_PTC_only = NK_PTC_only %>% mutate(Type = case_when(Category == "MANE" ~ "MANE",
+                                                      Category == "Other" & PTC.y == "TRUE" ~ "PTC",
+                                                      Category == "Novel" & PTC.x == "TRUE" ~ "novel NMD",
+                                                      Category == "Novel" & PTC.x == "FALSE" ~ "novel stable",
+                                                      TRUE ~ "Other"))
+NK_PTC_summary = NK_PTC_only %>% group_by(Sample, Type) %>% summarise(n = n(),
+                                                                      med = median(log2FoldChange))
+
+NK_PTC_colors = c("MANE" = "#663171",
+                  "PTC" = "#EA7428",
+                  "Other" = "#DD7373",
+                  "novel NMD" = "#C5E363",
+                  "novel stable" = "#0075A2")
+NK_PTC_boxplot = ggplot(NK_PTC_only)
+NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable"))),
+                                                 position = position_dodge2(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1) +
+  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
+  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
+  geom_text_repel(data = NK_PTC_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = NK_PTC_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+NK_PTC_boxplot
+ggsave("novel_kallisto_PTC_isoforms.pdf",
+       plot = NK_PTC_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)

@@ -12,6 +12,13 @@ do
     cd "$dir"/"$i"
     mkdir -p "$GR_dir"/Kallisto_and_DEseq2/"$i"
     cp *.R "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Git_repository/Kallisto_and_DEseq2/$i/""$i""_kallisto.R"
+    
+    if [ -d novel_kallisto ] #looks for the novel_kallisto directory
+    then
+        echo "$i" novel kallisto exists
+        cp ./novel_kallisto/*.R "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Git_repository/Kallisto_and_DEseq2/$i/""$i""_novel_kallisto.R"
+    fi 
+
     cd "$GR_dir"
 
 done
