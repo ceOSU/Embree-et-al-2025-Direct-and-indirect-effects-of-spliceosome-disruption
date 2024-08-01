@@ -37,6 +37,8 @@ library(ggpmisc)
 library(biomaRt)
 library(patchwork)
 library(pheatmap)
+library(ggVennDiagram)
+library(MoMAColors)
 
 all_GOI = c("UPF1","EIF4A3","MAGOH",
             "AQR","RBM22","CDC5L",
@@ -3475,3 +3477,41 @@ master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_
                            mart = ensembl)
 master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
 write_csv(master_list,"KD_DEseq_masterlist.csv")
+
+###Look at highly upregulated transcripts####
+upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1")
+for (i in upreg_test) {
+  print(i)
+  assign(paste0(i,"_Upregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(baseMean > 100 & log2FoldChange >= 0.58 & padj < 0.05 & transcript_biotype == "nonsense_mediated_decay"))
+  assign(paste0(i,"_genes_up"),
+         getBM(attributes = c("external_gene_name","ensembl_gene_id"),
+               filters = "ensembl_gene_id",
+               values = eval(parse(text = paste0(i,"_Upregulated$ensembl_gene_id"))),
+               mart = ensembl))
+  assign(paste0(i,"_Upregulated"),
+         eval(parse(text = paste0(i,"_Upregulated"))) %>% left_join(eval(parse(text = paste0(i,"_genes_up")))))
+  write_csv(eval(parse(text = paste0(i,"_Upregulated"))),
+            paste0(i,"_Upregulated_transcripts.csv"))
+  assign(paste0(i,"_up_geneset"),
+         eval(parse(text = paste0(i,"_Upregulated"))) %>% distinct(ENST.ID))
+}
+set.seed(1)
+s <- list("EIF4A3" = EIF4A3_up_geneset$ENST.ID,
+          "EFTUD2" = EFTUD2_up_geneset$ENST.ID,
+          "CDC40" = CDC40_up_geneset$ENST.ID,
+          "SF3B1" = SF3B1_up_geneset$ENST.ID)
+ggvenn = ggVennDiagram(s,
+                       label_alpha = 0.5,
+                       label = "count") +
+  scale_fill_moma_c("Ernst") +
+  labs(title = "Upregulated Transcripts")
+ggvenn
+ggsave("Upregulated_overlap.pdf",
+       plot = ggvenn,
+       device = pdf,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi =300)
