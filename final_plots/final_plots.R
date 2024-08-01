@@ -37,6 +37,8 @@ library(ggpmisc)
 library(biomaRt)
 library(patchwork)
 library(pheatmap)
+library(ggVennDiagram)
+library(MoMAColors)
 
 all_GOI = c("UPF1","EIF4A3","MAGOH",
             "AQR","RBM22","CDC5L",
@@ -48,7 +50,11 @@ all_GOI = c("UPF1","EIF4A3","MAGOH",
             "SNRNP70","SNRPC")
 Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","SNRPC","SNRNP70")
 
-
+#Set up biomart
+listMarts()
+ensembl <- useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
+ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
+attributes <- listAttributes(ensembl)
 
 #### Histogram of Log2FC from WT filtered cells####
 hist_all_GOI = c("UPF1","AGO1","AQR","SF3B3","EIF4A3")
@@ -940,7 +946,7 @@ ggsave("main_fig_total_TPM_SBS.pdf",
        units = "in",
        dpi = 300)
 
-#### Look at TPM of PE NMD isoforms ####
+#### Look at FC of PE NMD isoforms ####
 for (i in all_GOI) {
   print(i)
   assign(paste0(i,"_full_alltrans"),
@@ -3446,3 +3452,66 @@ ggsave("NK_PTC_isoforms_no_novel.pdf",
        units = "in",
        device = pdf,
        dpi = 300)
+
+####Make a master list of transcripts in the KDs####
+master_list = tibble(Sample = character())
+for (i in all_GOI) {
+  print(i)
+  master_list = master_list %>% full_join(eval(parse(text = paste0(i,"_full_alltrans"))))
+}
+master_list = master_list %>% select(Sample,log2FoldChange,ENST.ID,baseMean,padj)
+master_list = master_list %>% group_by(Sample, ENST.ID) %>% distinct(ENST.ID, .keep_all = TRUE) %>% ungroup() #removes some rows that got duplicated when making the ENST.ID column
+master_list = master_list %>% pivot_wider(names_from = Sample, values_from = c(log2FoldChange,baseMean,padj),
+                                          names_vary = "slowest",values_fill = NA)
+master_list = master_list %>% left_join(PTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
+  left_join(Saltzman_PE %>% select(ensembl_transcript_id,Isoform),
+                                   by = c("ENST.ID" = "ensembl_transcript_id"))
+master_list = master_list %>% 
+  mutate(PTC = str_replace(PTC,"FALSE","MANE"),
+         PTC = str_replace(PTC,"TRUE","PTC")) %>% 
+  rename(PE = Isoform)
+master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                                          "transcript_mane_select"),
+                           filters = "ensembl_transcript_id",
+                           values = master_list$ENST.ID,
+                           mart = ensembl)
+master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(master_list,"KD_DEseq_masterlist.csv")
+
+###Look at highly upregulated transcripts####
+upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1")
+for (i in upreg_test) {
+  print(i)
+  assign(paste0(i,"_Upregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(baseMean > 100 & log2FoldChange >= 0.58 & padj < 0.05 & transcript_biotype == "nonsense_mediated_decay"))
+  assign(paste0(i,"_genes_up"),
+         getBM(attributes = c("external_gene_name","ensembl_gene_id"),
+               filters = "ensembl_gene_id",
+               values = eval(parse(text = paste0(i,"_Upregulated$ensembl_gene_id"))),
+               mart = ensembl))
+  assign(paste0(i,"_Upregulated"),
+         eval(parse(text = paste0(i,"_Upregulated"))) %>% left_join(eval(parse(text = paste0(i,"_genes_up")))))
+  write_csv(eval(parse(text = paste0(i,"_Upregulated"))),
+            paste0(i,"_Upregulated_transcripts.csv"))
+  assign(paste0(i,"_up_geneset"),
+         eval(parse(text = paste0(i,"_Upregulated"))) %>% distinct(ENST.ID))
+}
+set.seed(1)
+s <- list("EIF4A3" = EIF4A3_up_geneset$ENST.ID,
+          "EFTUD2" = EFTUD2_up_geneset$ENST.ID,
+          "CDC40" = CDC40_up_geneset$ENST.ID,
+          "SF3B1" = SF3B1_up_geneset$ENST.ID)
+ggvenn = ggVennDiagram(s,
+                       label_alpha = 0.5,
+                       label = "count") +
+  scale_fill_moma_c("Ernst") +
+  labs(title = "Upregulated Transcripts")
+ggvenn
+ggsave("Upregulated_overlap.pdf",
+       plot = ggvenn,
+       device = pdf,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi =300)
