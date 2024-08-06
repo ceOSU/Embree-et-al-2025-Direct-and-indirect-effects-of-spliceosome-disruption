@@ -11,12 +11,12 @@ do
     echo $i kallisto file copy
     cd "$dir"/"$i"
     mkdir -p "$GR_dir"/Kallisto_and_DEseq2/"$i"
-    cp *.R "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Git_repository/Kallisto_and_DEseq2/$i/""$i""_kallisto.R"
+    cp *.R "$GR_dir"/Kallisto_and_DEseq2/$i/""$i""_kallisto.R
     
     if [ -d novel_kallisto ] #looks for the novel_kallisto directory
     then
         echo "$i" novel kallisto exists
-        cp ./novel_kallisto/*.R "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Git_repository/Kallisto_and_DEseq2/$i/""$i""_novel_kallisto.R"
+        cp ./novel_kallisto/*.R "$GR_dir"/Kallisto_and_DEseq2/$i/""$i""_novel_kallisto.R
     fi 
 
     cd "$GR_dir"
@@ -32,7 +32,7 @@ do
     echo $i file copy
     cd "$dir"/IsoformSwitch/"$i"
     mkdir -p "$GR_dir"/IsoformSwitchAnalyzeR/"$i"
-    cp *.R "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Git_repository/IsoformSwitchAnalyzeR/$i/""$i""_script.R"
+    cp *.R "$GR_dir"/IsoformSwitchAnalyzeR/$i/""$i""_script.R
     cd "$GR_dir"
 
 done
@@ -40,5 +40,6 @@ done
 cp "$dir"/IsoformSwitch/Combined_analysis/*.R ./IsoformSwitchAnalyzeR/Combined_ISAR_analysis.R
 
 cp "$dir"/rMATS/*.Rmd "$GR_dir"/rMATS #adds in all of the R markdown workbooks from the rMATS folder. Final plots from rMATS are in ENCODE_rMATS_comparison file
+cp "$dir"/Poison_Exons/*.R "$GR_dir"/rMATS/Poison_Exon_analysis.R
 
 echo Done syncing scripts

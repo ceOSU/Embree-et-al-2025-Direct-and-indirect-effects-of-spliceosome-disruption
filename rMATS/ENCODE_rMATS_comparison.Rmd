@@ -25,7 +25,7 @@ library(ggrepel)
 ```
  **Date Created**: 12/19/2022
  
- **Date Modified**: 3/26/2024
+ **Date Modified**: 8/6/2024
 
  **Working Directory**: `r getwd()`
  
@@ -83,6 +83,8 @@ library(ggrepel)
  5/31/2024: Added in the PRPF8 and PRPF6 datasets
  
  7/1/2024: Removed some code that have updated versions in the NMD TPM script, and added in a venn diagram of significantly changing splice events
+ 
+ 8/6/2024: Added in analysis to look at PE vs all cassette exons
  
  # Introduction
 
@@ -1642,68 +1644,165 @@ After I identified the exon IDs from the grCh37 assembly of ensembl I used the c
 Because RMATS uses the 0 base I subtracted 1 from the exon start coordinates that ensembl gave me. 
 
 ```{r Look at PSI of PE}
-PE_coordinates <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/thomas_PE_coordinates.csv") #Import poison exon coordinates
-n_distinct(PE_coordinates$ensembl_exon_id) #548 PEs
-PE_coordinates = PE_coordinates %>% mutate(exonStart_0base = exon_chrom_start - 1) #make a 0base exon start site
-PE_coordinates = unite(PE_coordinates,col = PE_range,c("exon_chrom_start","exon_chrom_end"), #Make a range of the exon so I can filter out any exons with duplicate exon coordinates
-                       sep = ":",
-                       remove = FALSE)
-PE_coordinates = PE_coordinates %>% group_by(ensembl_gene_id) %>% 
-  distinct(PE_range, .keep_all = TRUE) %>% #removes any duplicate exons
-  ungroup
+Saltzman_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/Saltzman_inclusion_NMD_transcripts.csv") #Import poison exon coordinates
+all_cassette_exons <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/all_cassette_exons.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+all_cassette_exons = all_cassette_exons %>%
+  filter(genename != "onlyEST") %>% #Removes the exons that don't have a gene name associated
+  select(1:4,22) #Exon start coordinates are already 0 base
+cassette_annotation = all_cassette_exons %>% mutate(PE = if_else(genename %in% Saltzman_transcripts$external_gene_name,
+                                                                 TRUE,FALSE))
 
-SR_proteins = c("SRSF1","SRSF2","SRSF3","SRSF4","SRSF5","SRSF6","SRSF7","SRSF9","SRSF11")
-all_PE = tibble()
+all_cassette_inc = tibble(Sample = character())
 for (i in all_order) {
   print(i)
-  assign(paste0(i,"_PE_SE"), eval(parse(text = paste0(i,"_SE_JCEC"))) %>%
-           left_join(PE_coordinates, by = c("geneSymbol" = "external_gene_name",
-                                              "GeneID" = "ensembl_gene_id",
-                                              "exonStart_0base" = "exonStart_0base",
-                                              "exonEnd" = "exon_chrom_end"),
+  assign(paste0(i,"_cassettes"), eval(parse(text = paste0(i,"_SE_JCEC"))) %>%
+           full_join(eval(parse(text = paste0(i,"_MXE_JCEC")))) %>% #combine the MXE and SE tables
+           inner_join(cassette_annotation, by = c("geneSymbol" = "genename",
+                                                  "chr" = "chromo",
+                                                  "strand",
+                                                  "exonStart_0base" = "start",
+                                                  "exonEnd" = "end"),
                       relationship = "many-to-one"))
-  assign(paste0(i,"_PE_SE"), eval(parse(text = paste0(i,"_PE_SE"))) %>%
-           filter(!is.na(ensembl_exon_id)) %>% 
+  assign(paste0(i,"_cassettes"), eval(parse(text = paste0(i,"_cassettes"))) %>%
            mutate(Sample = i))
+  all_cassette_inc = all_cassette_inc %>% full_join(eval(parse(text = paste0(i,"_cassettes"))))
 }
-all_PE = EIF4A3_PE_SE %>% full_join(UPF1_PE_SE) %>% full_join(MAGOH_PE_SE) %>% 
-  full_join(SF3B1_PE_SE) %>% full_join(SF3B3_PE_SE) %>% full_join(EFTUD2_PE_SE) %>% full_join(SNRNP200_PE_SE) %>%
-  full_join(AQR_PE_SE) %>% full_join(RBM22_PE_SE) %>% full_join(SNRPC_PE_SE) %>% full_join(GNB2L1_PE_SE) %>%
-  full_join(SNRNP70_PE_SE) %>% full_join(PRPF3_PE_SE) %>% full_join(HNRNPK_PE_SE) %>% full_join(SF3A3_PE_SE) %>% 
-  full_join(PRPF4_PE_SE) %>% full_join(CDC40_PE_SE) %>% full_join(CDC5L_PE_SE) %>% full_join(U2AF1_PE_SE) %>% 
-  full_join(SF3A1_PE_SE)
-all_PE = all_PE %>% mutate(corec_ILD = IncLevelDifference * -1,
-                           SR = if_else(geneSymbol %in% SR_proteins,
-                                        TRUE,
-                                        FALSE))
-all_PE_sum = all_PE %>% group_by(Sample) %>% summarise(events = n(),
-                                                       PE = n_distinct(ensembl_exon_id),
-                                                       SR_events = sum(SR))
-SR_colors = c("TRUE" = "#76CEB5","FALSE" = "grey")
-PE_scatter = ggplot(data = all_PE)
-PE_scatter = PE_scatter + geom_jitter(aes(x = factor(Sample,levels = all_order),
-                                        y = corec_ILD,
-                                        color = SR),
-                                      position = position_jitterdodge()) +
-  scale_color_manual(values = SR_colors, labels = c("TRUE" = "SR Proteins","FALSE" = "Other")) +
-  scale_fill_manual(values = SR_colors, labels = c("TRUE" = "SR Proteins","FALSE" = "Other"))+
-  theme_bw() +
-  labs(title = "Poison Exon Inclusion",
-       x = "KD",
+
+all_cassette_inc = all_cassette_inc %>% mutate(corec_ILD = IncLevelDifference * -1)
+all_cassette_sum = all_cassette_inc %>% group_by(Sample,PE) %>% summarise(n = n(),
+                                                                       Med = median(corec_ILD))
+all_PE_res = tibble(Sample = as.character(), P = as.numeric())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_PE_res"), wilcox.test(corec_ILD ~ PE, data = all_cassette_inc %>% filter(Sample == i),
+                                          exact = FALSE, alternative = "less")) #use less because we expect other cassette exons to be lower included than PE
+  all_PE_res = all_PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PE_res$p.value"))))
+}
+all_cassette_sum = all_cassette_sum %>% left_join(all_PE_res)
+
+PE_Colors = c("TRUE" = "#76CEB5","FALSE" = "grey")
+PE_boxplot = ggplot(data = all_cassette_inc)
+PE_boxplot = PE_boxplot + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_order),
+                   y = corec_ILD,
+                   fill = PE),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = PE_Colors,labels = c("TRUE" = "Poison",
+                                                  "FALSE" = "Cassette")) +
+  scale_color_manual(values = PE_Colors)+
+  geom_label(data = all_cassette_sum,
+             aes(x = factor(Sample, levels = all_order),
+                 y = 0.75,
+                 label = signif(P,digits = 3)),
+             size = 5,
+             alpha = 0.75)+
+  geom_label(data = all_cassette_sum %>% filter(Sample %in% all_order),
+             aes(x = factor(Sample, levels = all_order),
+                 y = Med,
+                 color = PE,
+                 label = round(Med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_label(data = all_cassette_sum %>% filter(Sample %in% all_order),
+             aes(x = factor(Sample, levels = all_order),
+                 y = -0.75,
+                 color = PE,
+                 label = n),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 5,
+             alpha = 0.75) +
+  theme_bw() + 
+  labs(x = "Sample",
        y = "▲PE Inclusion",
-       subtitle = "KD inclusion - WT inclusion",
-       fill = "Gene Type") +
-  theme(axis.text.x = element_text(angle = 30,vjust = 0.95,hjust = 1)) +
-  geom_boxplot(aes(x = Sample, y = corec_ILD, fill = SR),
-               alpha = 0.5,
-               outlier.shape = NA,
-               show.legend = F)
-PE_scatter
-ggsave("all_PE_SR_noted.pdf",
-       plot = PE_scatter,
-       units = "in",
+       fill = "Exon Type",
+       title = "Cassette exon inclusion")+
+  coord_cartesian(y = c(-1,1))
+PE_boxplot
+ggsave("PE_boxplot_Full.pdf",
+       plot = PE_boxplot,
+       width = 40,
        height = 10,
-       width = 12,
+       units = "in",
+       dpi = 300,
+       device = cairo_pdf,
+       family = "Arial Unicode MS")
+```
+
+I'm also going to filter the results to just the significant altered splicing events. 
+
+```{r}
+sig_cassette = all_cassette_inc %>% filter(PValue < 0.05)
+sig_cassette_sum = sig_cassette %>% group_by(Sample, PE) %>% 
+  summarise(n = n(),
+            Med = median(corec_ILD))
+sig_cassette_res = tibble(Sample = as.character(), P = as.numeric())
+for (i in all_order) {
+  print(i)
+  assign(paste0(i,"_sig_PE_res"), wilcox.test(corec_ILD ~ PE, data = sig_cassette %>% filter(Sample == i),
+                                          exact = FALSE, alternative = "less")) #use less because we expect other cassette exons to be lower included than PE
+  sig_cassette_res = sig_cassette_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_sig_PE_res$p.value"))))
+}
+sig_cassette_sum = sig_cassette_sum %>% left_join(sig_cassette_res)
+
+
+sig_PE_boxplot = ggplot(data = sig_cassette)
+sig_PE_boxplot = sig_PE_boxplot + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_order),
+                   y = corec_ILD,
+                   fill = PE),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = PE_Colors,labels = c("TRUE" = "Poison",
+                                                  "FALSE" = "Cassette")) +
+  scale_color_manual(values = PE_Colors)+
+  geom_label(data = sig_cassette_sum,
+             aes(x = factor(Sample, levels = all_order),
+                 y = 0.75,
+                 label = signif(P,digits = 3)),
+             size = 5,
+             alpha = 0.75)+
+  geom_label(data = sig_cassette_sum %>% filter(Sample %in% all_order),
+             aes(x = factor(Sample, levels = all_order),
+                 y = Med,
+                 color = PE,
+                 label = round(Med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_label(data = sig_cassette_sum %>% filter(Sample %in% all_order),
+             aes(x = factor(Sample, levels = all_order),
+                 y = -0.75,
+                 color = PE,
+                 label = n),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 5,
+             alpha = 0.75) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "▲PE Inclusion",
+       fill = "Exon Type",
+       title = "Cassette exon inclusion")+
+  coord_cartesian(y = c(-1,1))
+sig_PE_boxplot
+ggsave("sig_PE_boxplot.pdf",
+       plot = sig_PE_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
        dpi = 300,
        device = cairo_pdf,
        family = "Arial Unicode MS")
@@ -2061,5 +2160,18 @@ for (i in Disease_samples) {
 }
 all_disease_events = all_disease_novel %>% full_join(all_disease_sig)
 write_csv(all_disease_events,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/disease_all_splicing_events")
+```
+
+# Look at PE includion level
+
+I am going to look at the inclusion levels of Poison exons (PE) compared to other cassette exons in the genome.
+The list of cassette exons was downloaded from HexEvent on 8/7/2024.
+
+```{r PE list}
+Saltzman_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/Saltzman_inclusion_NMD_transcripts.csv")
+all_cassette_exons <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/all_cassette_exons.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+all_cassette_exons = all_cassette_exons %>% mutate(chromo = str_remove(chromo,"chr"))
 ```
 
