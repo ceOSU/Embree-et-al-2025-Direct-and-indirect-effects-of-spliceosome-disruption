@@ -3479,7 +3479,7 @@ master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "
 write_csv(master_list,"KD_DEseq_masterlist.csv")
 
 ###Look at highly upregulated transcripts####
-upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1")
+upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1","AQR")
 for (i in upreg_test) {
   print(i)
   assign(paste0(i,"_Upregulated"),
@@ -3501,7 +3501,8 @@ set.seed(1)
 s <- list("EIF4A3" = EIF4A3_up_geneset$ENST.ID,
           "EFTUD2" = EFTUD2_up_geneset$ENST.ID,
           "CDC40" = CDC40_up_geneset$ENST.ID,
-          "SF3B1" = SF3B1_up_geneset$ENST.ID)
+          "SF3B1" = SF3B1_up_geneset$ENST.ID,
+          "AQR" = AQR_up_geneset$ENST.ID)
 ggvenn = ggVennDiagram(s,
                        label_alpha = 0.5,
                        label = "count") +
@@ -3515,3 +3516,73 @@ ggsave("Upregulated_overlap.pdf",
        height = 10,
        units = "in",
        dpi =300)
+
+####Make a scatter plot of KDs compared to EIF4A3 KD####
+for (i in upreg_test) {
+  print(i)
+  assign(paste0(i,"_high_mean"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(baseMean > 100 & transcript_biotype == "nonsense_mediated_decay") %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id,transcript_mane_select,
+                  transcript_biotype))
+}
+
+all_high_mean = AQR_high_mean %>% full_join(EFTUD2_high_mean) %>% 
+  full_join(CDC40_high_mean) %>% full_join(SF3B1_high_mean)
+EIF4A3_high_mean = EIF4A3_high_mean %>% rename(EIF4A3_FC = log2FoldChange) %>% select(ENST.ID,EIF4A3_FC)
+all_high_mean = all_high_mean %>% inner_join(EIF4A3_high_mean, relationship = "many-to-one")
+
+base_mean_colors = c("EFTUD2" = "#472965",
+                     "CDC40" = "#E0A500",
+                     "AQR" = "#3891A6",
+                     "SF3B1" = "#D84654")
+base_mean_scatter = ggplot(data = all_high_mean)
+base_mean_scatter = base_mean_scatter + geom_hline(yintercept = 0, color = "black") +
+  geom_vline(xintercept = 0,color = "black") +
+  geom_point(aes(x = log2FoldChange,
+                 y = EIF4A3_FC,
+                 color = Sample),
+             alpha = 0.5) +
+  geom_smooth(aes(x = log2FoldChange,
+                  y = EIF4A3_FC),
+              color = "darkgrey",
+              method = "lm") +
+  facet_wrap(vars(Sample),ncol = 2) +
+  theme_bw() +
+  labs(title = "NMD Biotype Comparison",
+       caption = "Base Mean > 100",
+       y = "EIF4A3 log2(FC)")
+base_mean_scatter
+ggsave("NMD_biotype_comparison.pdf",
+       plot = base_mean_scatter,
+       device = pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+up_mean = all_high_mean %>% filter(log2FoldChange > 0.58)
+up_mean_scatter = ggplot(data = up_mean)
+up_mean_scatter = up_mean_scatter + geom_hline(yintercept = 0, color = "black") +
+  geom_vline(xintercept = 0,color = "black") +
+  geom_point(aes(x = log2FoldChange,
+                 y = EIF4A3_FC,
+                 color = Sample),
+               alpha = 0.5) +
+  geom_smooth(aes(x = log2FoldChange,
+                  y = EIF4A3_FC),
+              color = "darkgrey",
+              method = "lm") +
+  facet_wrap(vars(Sample),ncol = 2) +
+  theme_bw() +
+  labs(title = "NMD Biotype Comparison",
+       caption = "Base Mean > 100, non-EIF4A3 FC>1.5",
+       y = "EIF4A3 log2(FC)")
+up_mean_scatter
+ggsave("NMD_biotype_comparison_upreg.pdf",
+       plot = up_mean_scatter,
+       device = pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)

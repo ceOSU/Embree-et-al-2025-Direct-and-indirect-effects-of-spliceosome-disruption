@@ -63,7 +63,7 @@ newPE = newPE %>% select(1:4,6) %>% rename(chromosome = seqnames,
 
 #Get the coordinates of exons from BioMart
 listMarts()
-ensembl <- useMart("ensembl")
+ensembl <- useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
 ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
 attributes <- listAttributes(ensembl)
 exon_coordinates <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","ensembl_gene_id",
@@ -225,18 +225,9 @@ write_csv(full_NMD, file = "PE_NMD_transcripts_both_lists.csv")
 
 ####Identify exons in Salzman list only present in NMD Biotype####
 inclusion_exons = getBM(attributes = c("external_gene_name","ensembl_gene_id","ensembl_transcript_id",
-                                       "ensembl_exon_id","exon_chrom_start", "exon_chrom_end","transcript_biotype"),
-                        filters = "ensembl_gene_id",
-                        values = Inclusion_ids$ensembl_gene_id,
+                                       "ensembl_exon_id","chromosome_name","exon_chrom_start", "exon_chrom_end"),
+                        filters = "ensembl_transcript_id",
+                        values = inclusion_NMD_transcripts$ensembl_transcript_id,
                         mart = ensembl)
-inclusion_exon_summ = inclusion_exons %>% group_by(ensembl_exon_id) %>% 
-  summarise(n = n(),
-            transcripts = n_distinct(ensembl_transcript_id),
-            nmd = sum(str_detect(transcript_biotype,"nonsense"))) %>% 
-  filter(nmd == n)
-inclusion_exon_filt = inclusion_exons %>% filter(ensembl_exon_id %in% inclusion_exon_summ$ensembl_exon_id)
-inclusion_transcript_sum = inclusion_exon_filt %>% summarise(genes = n_distinct(ensembl_gene_id),
-                                                             transcripts = n_distinct(ensembl_transcript_id),
-                                                             exons = n_distinct(ensembl_exon_id))
-
-####Look at PE compared to other cassette exons####
+inclusion_exons = inclusion_exons %>% distinct(ensembl_exon_id,.keep_all = TRUE)
+write_csv(inclusion_exons,"Saltzman_inclusion_exons.csv")

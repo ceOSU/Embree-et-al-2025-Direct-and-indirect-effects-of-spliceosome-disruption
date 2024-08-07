@@ -1645,6 +1645,7 @@ Because RMATS uses the 0 base I subtracted 1 from the exon start coordinates tha
 
 ```{r Look at PSI of PE}
 Saltzman_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/Saltzman_inclusion_NMD_transcripts.csv") #Import poison exon coordinates
+Saltzman_inclusion_exons <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/Saltzman_inclusion_exons.csv")
 all_cassette_exons <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/all_cassette_exons.txt", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
@@ -2162,16 +2163,4 @@ all_disease_events = all_disease_novel %>% full_join(all_disease_sig)
 write_csv(all_disease_events,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/disease_all_splicing_events")
 ```
 
-# Look at PE includion level
-
-I am going to look at the inclusion levels of Poison exons (PE) compared to other cassette exons in the genome.
-The list of cassette exons was downloaded from HexEvent on 8/7/2024.
-
-```{r PE list}
-Saltzman_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/Saltzman_inclusion_NMD_transcripts.csv")
-all_cassette_exons <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/all_cassette_exons.txt", 
-    delim = "\t", escape_double = FALSE, 
-    trim_ws = TRUE)
-all_cassette_exons = all_cassette_exons %>% mutate(chromo = str_remove(chromo,"chr"))
-```
 
