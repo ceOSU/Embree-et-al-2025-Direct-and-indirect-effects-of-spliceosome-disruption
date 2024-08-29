@@ -669,6 +669,7 @@ UAnovel_ORF = novel_ORF %>% mutate(unannotated = str_detect(isoform_id,"MSTRG"))
   filter(unannotated == "TRUE") %>% 
   select(1:26)
 unnanotated_genes = UAnovel_ORF %>% distinct(gene_id)
+write_csv(unnanotated_genes,"genes_with_novel_isoforms.csv")
 unnanotated_genes_ORF = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","cds_length"),
                               filters = "ensembl_gene_id",
                               values = unnanotated_genes,

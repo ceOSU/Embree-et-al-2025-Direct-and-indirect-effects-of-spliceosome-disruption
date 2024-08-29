@@ -3266,11 +3266,15 @@ shared_AS = MAGOH_sig_AS_genes %>% inner_join(EIF4A3_sig_AS_genes) %>% inner_joi
   inner_join(PRPF3_sig_AS_genes) %>% inner_join(PRPF4_sig_AS_genes) %>% inner_join(GNB2L1_sig_AS_genes) %>%
   distinct(GeneID)
 shared_AS_annotation = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id",
-                                            "transcript_biotype"),
+                                            "transcript_biotype","cds_length"),
                              filters = "ensembl_gene_id",
                              values = shared_AS$GeneID,
                              mart = ensembl)
 Shared_AS_NMD_iso = shared_AS_annotation %>% filter(transcript_biotype == "nonsense_mediated_decay")
+genes_with_novel_isoforms <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/Combined_analysis/genes_with_novel_isoforms.csv")
+shared_AS_novel = Shared_AS_NMD_iso %>% filter(ensembl_gene_id %in% genes_with_novel_isoforms$gene_id)
+shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman_inclusion_NMD_transcripts$ensembl_transcript_id &
+                                               cds_length < 1000)
 
 ####Look at the effect of including novel isoforms in the kallisto transcriptome ####
 NK_samples = c("UPF1","EIF4A3","MAGOH","EFTUD2","AQR","SF3B1","SF3B3","CDC40")

@@ -46,8 +46,8 @@ View(samples)
 
 #Load in the files
 files1 <- file.path("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1_K562","koutput", samples$Run, "abundance.h5")
-files1
 names(files1) <- paste0(c("SRR4421434","SRR4421435","SRR4421542","SRR4421543"))
+files1
 
 
 #importing output files from each library to a compiled dataframe
@@ -67,6 +67,7 @@ counts$ENSTID <- sub("\\..*", "", counts$ensembl_transcript_id_version)
 
 
 
+
 #######Finding isoform specific counts associated with a gene in the dataset.####
 
 listMarts()
@@ -79,20 +80,6 @@ listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","
                    mart = ensembl)
 
 listgenes <- inner_join(counts, listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
-
-#Analyzing isoform specific mean counts for a gene of interest (not essential)
-UPF1transcripts=filter(listgenes, external_gene_name == "UPF1" )
-UPF1transcriptsWT<-UPF1transcripts %>% dplyr::select(SRR4421434,SRR4421435, ensembl_transcript_id_version, external_gene_name, external_transcript_name)
-UPF1transcriptsWT$averagecounts = rowMeans(UPF1transcriptsWT[,c("SRR4421434","SRR4421435")])
-#put in specific library names above
-UPF1transcriptsWT$percent= UPF1transcriptsWT$averagecounts/sum(UPF1transcriptsWT$averagecounts)
-UPF1transcriptsWT<-UPF1transcriptsWT %>% arrange(averagecounts)
-
-#Repeat for the KD transcripts
-UPF1transcriptsKD<-UPF1transcripts %>% dplyr::select(SRR4421542,SRR4421543, ensembl_transcript_id_version, external_gene_name, external_transcript_name)
-UPF1transcriptsKD$averagecounts = rowMeans(UPF1transcriptsKD[,c("SRR4421542","SRR4421543")])
-UPF1transcriptsKD$percent= UPF1transcriptsKD$averagecounts/sum(UPF1transcriptsKD$averagecounts)
-UPF1transcriptsKD<-UPF1transcriptsKD %>% arrange(averagecounts)
 
 ####Differential expression analysis#####
 
@@ -112,8 +99,16 @@ vsd <- vst(ddscounts, blind = FALSE)
 rld <- rlog(ddscounts)
 plotPCA(vsd, intgroup = "genotype")
 #with sample labels
-plotPCA(vsd, intgroup = "genotype")+
+PCA = plotPCA(vsd, intgroup = "genotype")+
   geom_text_repel(aes(label=name))
+PCA
+ggsave("UPF1_PCA.pdf",
+       plot = PCA,
+       device = pdf,
+       width = 5,
+       height = 5,
+       units = "in",
+       dpi = 300)
 
 #heatmap
 sampleDists <- dist(t(assay(vsd)))
@@ -173,22 +168,22 @@ transcriptids=row.names(res.sig)
 transcriptids1=as.vector(transcriptids)
 trans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
                                      "external_gene_name","transcript_biotype"),
-                filters = "ensembl_transcript_id_version",
-                values = transcriptids1,
-                mart = ensembl)
+                      filters = "ensembl_transcript_id_version",
+                      values = transcriptids1,
+                      mart = ensembl)
 sig.trans <- as.data.frame(res.sig)
 NMD.trans <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                 "external_gene_name","transcript_biotype"),
-                  filters = "transcript_biotype",
-                  values = "nonsense_mediated_decay",
-                  mart = ensembl)
+                                  "external_gene_name","transcript_biotype"),
+                   filters = "transcript_biotype",
+                   values = "nonsense_mediated_decay",
+                   mart = ensembl)
 #total NMD trans = 19738
 #total significantly changing genes = 11854
 sigNMD=intersect(row.names(sig.trans), NMD.trans$ensembl_transcript_id_version)
 #intersect between NMDgenes and significantly changing genes in RNAseq(wt vs kd) = 950
 re.alltrans<-as.data.frame(res_counts)
 
-##ploting venn diagrams
+#### ploting venn diagrams ####
 set1=intersect(NMD.trans$ensembl_transcript_id_version, rownames(re.alltrans))
 set2=row.names(sig.trans)
 set3=row.names(up.trans)
@@ -202,27 +197,28 @@ plot(euler(s), quantities = TRUE,
 
 
 
-
+#### Creating alltrans datatables ####
 alltrans <- as.data.frame(res_counts)
-alltrans = alltrans %>% filter(!is.na(padj))
+alltrans = alltrans %>% filter(!is.na(padj)) %>% 
+  rownames_to_column(var = "transcriptID_version")
+alltrans = alltrans %>% mutate(ENST.ID = str_remove(transcriptID_version,"\\..*")) 
 
-alltransbiotype <- getBM(attributes = c("ensembl_transcript_id_version","external_gene_name",
-                                        "transcript_biotype"),
-                      filters = "ensembl_transcript_id_version",
-                      values = rownames(res_counts),
-                      mart = ensembl)
+alltransbiotype <- getBM(attributes = c("external_gene_name","ensembl_gene_id",
+                                        "ensembl_transcript_id","transcript_biotype",
+                                        "transcript_mane_select"),
+                         filters = "ensembl_transcript_id",
+                         values = alltrans$ENST.ID,
+                         mart = ensembl)
 
-alltrans<-alltrans[order(rownames(alltrans)),]
-alltransbiotype<-alltransbiotype[order(alltransbiotype$ensembl_transcript_id_version),]
-alltrans = rownames_to_column(alltrans, var = "transcript_id")
-alltransbioNMD <- inner_join(alltrans,alltransbiotype, by=c("transcript_id" = "ensembl_transcript_id_version")) #Check this for gene FC
 
-#CDF plot comparing NMD biotype 
+alltransbioNMD <- left_join(alltrans,alltransbiotype, by=c("ENST.ID" = "ensembl_transcript_id")) #Check this for gene FC
+
+#### CDF plot comparing NMD biotype ####
 write(alltransbiotype$ensembl_transcript_id_version, "tids.txt")
 alltransbioNMD = alltransbioNMD %>% filter(transcript_biotype == "protein_coding" | transcript_biotype == "nonsense_mediated_decay")
 
 NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotype))+
-  stat_ecdf(size=2)+
+  stat_ecdf(linewidth=2)+
   theme_minimal()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
   coord_cartesian(xlim = c(-3,3)) +
@@ -230,17 +226,14 @@ NMDBio_cdf = ggplot(alltransbioNMD, aes(log2FoldChange, colour=transcript_biotyp
   labs(y = "Cumulative Frequency", title = "UPF1 KD vs WT", subtitle = "NMD biotype")
 NMDBio_cdf
 
-#analysis with robert's PTC+ and PTC- list
-ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1_K562/ENST_PTC-EPI-TFG.txt")
-alltrans$ENST.ID <- sub("\\..*", "", alltrans$transcript_id)
-test<-alltrans
-test$PTC=NULL
-names(test)[8]<-"ENST.ID"
+#### analysis with robert's PTC+ and PTC- list ####
+ENST_PTC.EPI.TFG <- read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1/ENST_PTC-EPI-TFG.txt")
+
 
 alltransPTC<-inner_join(alltrans, ENST_PTC.EPI.TFG, by = "ENST.ID")
 
 PTC_cdf = ggplot(alltransPTC, aes(log2FoldChange, colour=PTC.Status))+
-  stat_ecdf(size=2)+
+  stat_ecdf(linewidth=2)+
   theme_minimal()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
   coord_cartesian(xlim = c(-3,3)) +
@@ -249,147 +242,39 @@ PTC_cdf = ggplot(alltransPTC, aes(log2FoldChange, colour=PTC.Status))+
 PTC_cdf
 
 resPTC <- wilcox.test(log2FoldChange ~ PTC.Status, data = alltransPTC,
-                   exact = FALSE, alternative = "less")
+                      exact = FALSE, alternative = "less")
 
 resPTC
 boxplot(log2FoldChange ~ PTC.Status, data=alltransPTC)
 
-#Analysis using the NMD+- transcript list
-NMD_transcripts = read.delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1_K562/NMD_transcript_list.txt")
-alltransNMD = inner_join(alltrans, NMD_transcripts, by="transcript_id")
-
-NMD_cdf = ggplot(alltransNMD, aes(log2FoldChange, colour=NMD))+
-  stat_ecdf(size=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = met.brewer("Java",2)) +
-  labs(y = "Cumulative Frequency", title = "UPF1 KD vs WT", subtitle = "NMD +/- list")
-NMD_cdf
-NMD_res <- wilcox.test(log2FoldChange ~ NMD, data = alltransNMD,
-                   exact = FALSE, alternative = "less")
-NMD_res #p-vlaue = 
-
-
-#Analysis using the stringent NMD list
-StringentNMD = read.csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1_K562/Stringent_NMD_list_CE")
-alltransSTNMD = inner_join(alltrans, StringentNMD, by = c("ENST.ID" = "transID"))
-
-sNMD_cdf = ggplot(alltransSTNMD, aes(log2FoldChange, colour=NMD))+
-  stat_ecdf(size=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = met.brewer("Java",2)) +
-  labs(y = "Cumulative Frequency", title = "UPF1 KD vs WT", subtitle = "Stringent NMD list")
-sNMD_cdf
-
-sNMD_res <- wilcox.test(log2FoldChange ~ NMD, data = alltransSTNMD,
-                   exact = FALSE, alternative = "less")
-sNMD_res #p-vlaue = 
-
-#Make a CDF using the stringent PTC list
-sPTC = read.csv("Stringent_PTC_CE") 
-alltransSPTC = inner_join(alltrans, sPTC, by = c("ENST.ID" = "transID")) 
-sPTC_res <- wilcox.test(log2FoldChange ~ PTC, data = alltransSPTC,
-                        exact = FALSE, alternative = "less")
-head(alltransSPTC)
-count(alltransSPTC, PTC) #1153 PTC false 410 PTC true
-sPTC_res #p-vlaue = 6.614e-8
 
 plot_colors = c("FALSE" = "#673272", "TRUE" = "#EA7428",
                 "PE" = "#76CEB5", "MANE" = "#BCB29F")
 
-sPTC_cdf = ggplot(alltransSPTC, aes(log2FoldChange, colour=PTC))+
-  stat_ecdf(linewidth=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = plot_colors) +
-  labs(y = "Cumulative Frequency")
-sPTC_cdf = sPTC_cdf + annotate("text", x=-2.5,y=1, label = "UPF1 KD vs WT", size = 5, hjust = 0) +
-  annotate("text", x=-2.5,y=.95, label = "Stringent PTC containing transcripts", hjust =0) +
-  annotate("text", x=-2.5,y=.9, label = "p-value = 6.614e-8", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.85, label = "PTC+ = 410", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.8, label = "PTC- = 1153", hjust = 0) +
-  geom_vline(xintercept = 0, color = "grey") + 
-  geom_hline(yintercept = 0.5, color = "grey") +
-  theme(legend.position = c(0.85,0.1))
-sPTC_cdf
-ggsave("UPF1_K562_sPTC_CDF.pdf", 
-       plot = sPTC_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/UPF1_K562_sPTC_CDF.pdf", 
-       plot = sPTC_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-
-##Make dot plot comparing the NMD plus and minus FC##
-UPF1_x = alltransSTNMD %>% filter(NMD == "TRUE")  %>% #Makes a data table of the top NMD transcript for each gene
-  select(Gene,log2FoldChange,baseMean) %>% 
-  rename(plusFC = log2FoldChange) %>% 
-  group_by(Gene) %>% 
-  slice_max(baseMean, n = 1)
-
-UPF1_y  = alltransSTNMD %>% filter(NMD == "FALSE")  %>% #Makes a data table fo the top NMD- transcript for each gene
-  select(Gene,log2FoldChange,baseMean) %>% 
-  rename(minusFC = log2FoldChange) %>% 
-  group_by(Gene) %>% 
-  slice_max(baseMean, n = 1)
-
-UPF1_scatter = full_join(UPF1_x, UPF1_y, by = "Gene", suffix = c("plus","minus")) #Combine the two top tables
-UPF1_scatter = UPF1_scatter %>% filter(!is.na(minusFC)) %>% 
-  filter(!is.na(plusFC)) #Removes any NA rows
 
 
-dot = ggplot(data = UPF1_scatter)+
-  geom_point(aes(x = plusFC, y = minusFC), color = "blue")+
-  geom_abline(aes(intercept = 0, slope = 1))+ #Makes a graph where each dot represents the NMD+ FC (x-axis) and NMD- FC (y-axis) for a specific gene
-  gghighlight(abs(plusFC) > 0.58, unhighlighted_params = list(alpha("black", 0.4)))+ #Highlights all of the genes that have more than a 1.5 log2FC in either direction in the NMD+ samples
-  labs(x = "Log2FC NMD+", y = "Log2FC NMD-", title = "UPF1 gene-level FC comparison")+
-  theme_minimal()+
-  coord_cartesian(xlim = c(-5,5), ylim = c(-5,5)) #Use if you need to restrict the axis length
-dot
-
-
-#Count the number of transcripts that are significantly changed
-counts = alltransSTNMD %>% filter(padj < 0.05) %>% 
-  filter(abs(log2FoldChange) >0.58) #All transcripts with a fold change higher than 1.5
-count(counts, NMD)
-#Sig_NMD+ = 153
-#Sig_NMD- = 334
-
-#Determine the effect on NMD when Alternately spliced genes are removed
+#### Determine the effect on NMD when Alternately spliced genes are removed (Delete this section if rMATS hasn't been done) ####
 ASgenes_UPF1 <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/ENCODE_UPF1/ASgenes_UPF1.csv", 
                           delim = ";", escape_double = FALSE, trim_ws = TRUE)
 ASgenes_UPF1 = ASgenes_UPF1 %>% select(GeneID,geneSymbol)
 sPTC_gene <- getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
                    filters = "ensembl_transcript_id",
-                   values = sPTC$transID,
+                   values = sPTC$ENST.ID,
                    mart = ensembl)
-sPTC_gene = sPTC_gene %>% inner_join(sPTC, by = c("ensembl_transcript_id" = "transID"))
+sPTC_gene = sPTC_gene %>% inner_join(sPTC, by = c("ensembl_transcript_id" = "ENST.ID"))
 sPTC_AS = sPTC_gene %>% anti_join(ASgenes_UPF1, by = c("ensembl_gene_id" = "GeneID"))
-count(sPTC_AS, PTC) #PTC false= 126 PTC true= 20
+count(sPTC_AS, PTC) #PTC false=  PTC true= 
 alltransAS = inner_join(alltrans, sPTC_AS, by = c("ENST.ID" = "ensembl_transcript_id"))
-count(alltransAS, PTC) # 55 PTC false  5 PTC true
+count(alltransAS, PTC) # PTC false  PTC true
 
 
 asPTC_res <- wilcox.test(log2FoldChange ~ PTC, data = alltransAS,
                          exact = FALSE, alternative = "less")
 head(alltransAS)
-asPTC_res #p-vlaue = 0.3943
+asPTC_res #p-vlaue = 
 
 asPTC_cdf = ggplot(alltransAS, aes(log2FoldChange, colour=PTC))+
-  stat_ecdf(size=2)+
+  stat_ecdf(linewidth=2)+
   theme_minimal()+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
   coord_cartesian(xlim = c(-3,3)) +
@@ -410,160 +295,13 @@ ggsave("UPF1_K562_asPTC_CDF.pdf",
        device = "pdf",
        dpi = 300)
 
-#### Look at FC of NMD factors ####
-alltrans_full <- as.data.frame(res_counts)
-alltrans_full = alltrans_full %>% filter(!is.na(padj))
-alltrans_full = rownames_to_column(alltrans_full, var = "transcript_id")
-alltrans_full$ENST.ID <- sub("\\..*", "", alltrans_full$transcript_id)
-
-alltrans_ensembl <- getBM(attributes = c("ensembl_transcript_id_version","external_gene_name",
-                                         "transcript_biotype","ensembl_transcript_id","transcript_mane_select"),
-                          filters = "ensembl_transcript_id",
-                          values = alltrans_full$ENST.ID,
-                          mart = ensembl)
-alltrans_annotated = alltrans_full %>% left_join(alltrans_ensembl, by = c("ENST.ID" = "ensembl_transcript_id"))
-alltrans_MANE = alltrans_annotated %>% filter(!is.na(transcript_mane_select)) %>% filter(transcript_mane_select != "")
-NMD_factors <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/NMD_factors.xlsx")
-
-UPF1_NMD = alltrans_MANE %>% inner_join(NMD_factors, by = c("external_gene_name" = "NMDfactor"))
-write.csv(UPF1_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/UPF1_NMDfactor.csv",row.names = FALSE)
-
-#### Look at FC of ZY NMD transcripts ####
-ZY_NMD <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/ZY_NMD_qPCR_IDs.xlsx")
-ZY_FC = alltrans_annotated %>% inner_join(ZY_NMD, by = c("ENST.ID" = "TranscriptID"))
-
-####Look at just the shared stringent PTC from ISAR####
-shared_sPTC <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/Combined_analysis/shared_stringent_PTC.csv")
-shared_SPTC_trans = inner_join(alltrans, shared_sPTC, by = c("ENST.ID" = "transID")) 
-shared_sPTC_res <- wilcox.test(log2FoldChange ~ PTC, data = shared_SPTC_trans,
-                               exact = FALSE, alternative = "less")
-head(shared_SPTC_trans)
-count(shared_SPTC_trans, PTC)#254 PTC false 103 PTC true
-shared_sPTC_res #p-vlaue = 6.584e-6
-
-shared_sPTC_cdf = ggplot(data = shared_SPTC_trans, aes(log2FoldChange, colour=PTC))+
-  stat_ecdf(linewidth=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = plot_colors) +
-  labs(y = "Cumulative Frequency")
-shared_sPTC_cdf = shared_sPTC_cdf + annotate("text", x=-2.5,y=1, label = "UPF1 KD vs WT", size = 5, hjust = 0) +
-  annotate("text", x=-2.5,y=.95, label = "Stringent PTC containing transcripts", hjust =0) +
-  annotate("text", x=-2.5,y=.9, label = "p-value = 6.584e-6", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.85, label = "PTC+ = 103", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.8, label = "PTC- = 254", hjust = 0) +
-  geom_vline(xintercept = 0, color = "grey") + 
-  geom_hline(yintercept = 0.5, color = "grey") +
-  theme(legend.position = c(0.85,0.1))
-shared_sPTC_cdf
-ggsave("UPF1_K562_shared_PTC_CDF.pdf", 
-       plot = shared_sPTC_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-
-#### Look at PE from (Thomas et al 2020 Nat. Gen.) ####
-PE_isoform_list <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/PE_isoform_list.csv")
-PE_FC = alltrans %>% inner_join(PE_isoform_list, by = c("ENST.ID" = "ensembl_transcript_id"))
-PE_res <- wilcox.test(log2FoldChange ~ isoform, data = PE_FC,
-                      exact = FALSE, alternative = "less")
-head(PE_FC)
-count(PE_FC, isoform)# 81 PE 68  MANE
-PE_res #p-vlaue = 7.189e-5
-
-PE_cdf = ggplot(PE_FC, aes(log2FoldChange, colour=isoform))+
-  stat_ecdf(linewidth=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = plot_colors) +
-  labs(y = "Cumulative Frequency")
-PE_cdf = PE_cdf + annotate("text", x=-2.5,y=1, label = "UPF1 KD vs WT", size = 5, hjust = 0) +
-  annotate("text", x=-2.5,y=.95, label = "Transcripts with a poison exon", hjust =0) +
-  annotate("text", x=-2.5,y=.9, label = "p-value = 7.189e-5", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.85, label = "PE = 81", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.8, label = "MANE = 68", hjust = 0) +
-  geom_vline(xintercept = 0, color = "grey") + 
-  geom_hline(yintercept = 0.5, color = "grey") +
-  theme(legend.position = c(0.85,0.1))
-PE_cdf
-ggsave("UPF1_K562_PE_CDF.pdf", 
-       plot = PE_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/UPF1_K562_PE_CDF.pdf", 
-       plot = PE_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-
-## Repeat with the new PE list
-PE_archive_list <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Poison_Exons/archive_PE_list.csv")
-PEa_FC = alltrans %>% inner_join(PE_archive_list, by = c("ENST.ID" = "ensembl_transcript_id"))
-PEa_res <- wilcox.test(log2FoldChange ~ isoform, data = PEa_FC,
-                       exact = FALSE, alternative = "less")
-head(PEa_FC)
-count(PEa_FC, isoform)# 443 PE  226 MANE
-PEa_res #p-vlaue = 3.261e-9
-
-PEa_cdf = ggplot(PEa_FC, aes(log2FoldChange, colour=isoform))+
-  stat_ecdf(linewidth=2)+
-  theme_minimal()+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(color = "grey"))+
-  coord_cartesian(xlim = c(-3,3)) +
-  scale_color_manual(values = plot_colors) +
-  labs(y = "Cumulative Frequency")
-PEa_cdf = PEa_cdf + annotate("text", x=-2.5,y=1, label = "UPF1 KD vs WT", size = 5, hjust = 0) +
-  annotate("text", x=-2.5,y=.95, label = "Transcripts with a poison exon", hjust =0) +
-  annotate("text", x=-2.5,y=.9, label = "p-value = 3.261e-9", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.85, label = "PE = 443", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.8, label = "MANE = 226", hjust = 0) +
-  geom_vline(xintercept = 0, color = "grey") + 
-  geom_hline(yintercept = 0.5, color = "grey") +
-  theme(legend.position = c(0.85,0.1))
-PEa_cdf
-ggsave("UPF1_K562_PE_archive_CDF.pdf", 
-       plot = PEa_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/UPF1_K562_PEarchive_CDF.pdf", 
-       plot = PEa_cdf,
-       scale = 1,
-       width = 8,
-       height = 6,
-       units = "in",
-       device = "pdf",
-       dpi = 300)
-
-####Look at effect on the MANE transcript of spliceosome factors under study####
-Splicing_factors <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/Splicing_factors.csv")
-
-UPF1_SC_impact = alltrans_MANE %>% inner_join(Splicing_factors, by = c("external_gene_name" = "Component"))
-write.csv(UPF1_SC_impact, "UPF1_splicing_impact.csv",row.names = FALSE)
-
-##Redo the sPTC analysis using the MANE list
-sPTC_MANE = read.csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/ENCODE_UPF1_K562/Stringent_PTC_MANE_CE.csv")
-alltransSPTC_MANE = inner_join(alltrans, sPTC_MANE, by = c("ENST.ID" = "transID")) 
+##sPTC analysis using the MANE list
+sPTC_MANE = read.csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
+alltransSPTC_MANE = inner_join(alltrans, sPTC_MANE, by = c("ENST.ID"= "transID")) 
 sPTC_MANE_res <- wilcox.test(log2FoldChange ~ PTC, data = alltransSPTC_MANE,
                              exact = FALSE, alternative = "less")
-count(alltransSPTC_MANE, PTC) # 257 PTC false 410 PTC true
-head(alltransSPTC_MANE)
-sPTC_MANE_res #p-vlaue = 6.614e-08
+count(alltransSPTC_MANE, PTC) # PTC false  PTC true
+sPTC_MANE_res #p-vlaue = 
 
 
 MANE_sPTC_cdf = ggplot(alltransSPTC_MANE, aes(log2FoldChange, colour=PTC))+
@@ -575,9 +313,9 @@ MANE_sPTC_cdf = ggplot(alltransSPTC_MANE, aes(log2FoldChange, colour=PTC))+
   labs(y = "Cumulative Frequency")
 MANE_sPTC_cdf = MANE_sPTC_cdf + annotate("text", x=-2.5,y=1, label = "UPF1 KD vs WT", size = 5, hjust = 0) +
   annotate("text", x=-2.5,y=.95, label = "PTC containing and MANE transcripts", hjust =0) +
-  annotate("text", x=-2.5,y=.9, label = "p-value = 1.359e-7", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.85, label = "PTC+ = 410", hjust = 0) +
-  annotate("text", x = -2.5, y = 0.8, label = "PTC- = 257", hjust = 0) +
+  annotate("text", x=-2.5,y=.9, label = "p-value = ", hjust = 0) +
+  annotate("text", x = -2.5, y = 0.85, label = "PTC+ = ", hjust = 0) +
+  annotate("text", x = -2.5, y = 0.8, label = "MANE = ", hjust = 0) +
   geom_vline(xintercept = 0, color = "grey") + 
   geom_hline(yintercept = 0.5, color = "grey") +
   theme(legend.position = c(0.85,0.1))
@@ -599,13 +337,40 @@ ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Fig
        device = "pdf",
        dpi = 300)
 
+#### Look at FC of NMD factors ####
+alltrans_full <- as.data.frame(res_counts)
+alltrans_full = alltrans_full %>% filter(!is.na(padj))
+alltrans_full = rownames_to_column(alltrans_full, var = "transcript_id")
+alltrans_full$ENST.ID <- sub("\\..*", "", alltrans_full$transcript_id)
+
+alltrans_ensembl <- getBM(attributes = c("ensembl_transcript_id_version","external_gene_name",
+                                         "transcript_biotype","ensembl_transcript_id","transcript_mane_select","ensembl_gene_id"),
+                          filters = "ensembl_transcript_id",
+                          values = alltrans_full$ENST.ID,
+                          mart = ensembl)
+alltrans_annotated = alltrans_full %>% left_join(alltrans_ensembl, by = c("ENST.ID" = "ensembl_transcript_id"))
+alltrans_MANE = alltrans_annotated %>% filter(!is.na(transcript_mane_select)) %>% filter(transcript_mane_select != "")
+NMD_factors <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/NMD_factors.xlsx")
+
+UPF1_NMD = alltrans_MANE %>% inner_join(NMD_factors, by = c("external_gene_name" = "NMDfactor"))
+write.csv(UPF1_NMD, "C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/NMD_analysis/UPF1_NMDfactor.csv",row.names = FALSE)
+
+
+####Look at effect on the MANE transcript of spliceosome factors under study####
+Splicing_factors <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/Splicing_factors.csv")
+
+UPF1_SC_impact = alltrans_MANE %>% inner_join(Splicing_factors, by = c("external_gene_name" = "Component"))
+write.csv(UPF1_SC_impact, "UPF1_splicing_impact.csv",row.names = FALSE)
+
+
+
 #### Pull the TPM of genes for the NMD TPM graph ####
 #Check WT and KD are refering to the right columns in listgenes
 full_tpm = listgenes %>% rowwise() %>%  mutate(WTmean = mean(c_across(1:2)), KDmean = mean(c_across(3:4))) %>% ungroup() #Check that WT and KD are referring to the right columns
-full_tpm = full_tpm %>% mutate(ENSTID = str_remove(ensembl_transcript_id_version, "\\..*"))
-full_tpm = full_tpm %>% select(6,8:10)
-PTC_tpm = full_tpm %>% right_join(sPTC_MANE, by = c("ENSTID" = "transID"))
-PTC_tpm = PTC_tpm %>% select(1,3:4,6:7)
+full_tpm = full_tpm %>% mutate(ENST.ID = str_remove(ensembl_transcript_id_version, "\\..*"))
+full_tpm = full_tpm %>% select(9:11)
+PTC_tpm = full_tpm %>% right_join(sPTC_MANE, by = c("ENST.ID" = "transID"))
+PTC_tpm = PTC_tpm %>% select(1:3,5,6)
 write_csv(PTC_tpm, "UPF1_PTC_MANE_TPM.csv")
 write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/UPF1_PTC_MANE_TPM.csv")
 
@@ -616,14 +381,10 @@ WTcounts <-as.data.frame(txi.kallisto.tsv$counts)
 WTcounts$mean=rowMeans(WTcounts[,c("SRR4421434","SRR4421435")], na.rm=TRUE) #Filter WT samples
 WTcounts=filter(WTcounts, mean>=1)
 
-listMarts()
-ensembl <- useMart("ensembl")
-ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
-attributes <- listAttributes(ensembl)
 WTlistgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id_version","external_transcript_name"),
-                   filters = "ensembl_transcript_id_version",
-                   values = rownames(WTcounts),
-                   mart = ensembl)
+                     filters = "ensembl_transcript_id_version",
+                     values = rownames(WTcounts),
+                     mart = ensembl)
 
 WTcounts$ensembl_transcript_id_version<-rownames(WTcounts)
 WTlistgenes <- inner_join(WTcounts, WTlistgenes, by = "ensembl_transcript_id_version")
@@ -655,27 +416,27 @@ head(WTres.sig)
 plotMA(WTres_counts, padj = TRUE, ylim=c(-6,6), main ="MA plot: WT vs KD")
 
 plotMA(WTres.sig)
-sum( WTres.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=5328
-sum( WTres.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=3505
+sum( WTres.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=
+sum( WTres.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=
 head(WTres.sig$log2FoldChange > 0)
 
 head( WTres.sig[ order( WTres.sig$log2FoldChange ), ] )
 head( WTres.sig[ order( WTres.sig$log2FoldChange ), ],20 )
 tail( WTres.sig[ order( WTres.sig$log2FoldChange ), ],20 )
 summary(WTres.sig$log2FoldChange)
-#log2fc range : --11.6032 to +7.7247
+#log2fc range : - to +
 
 WTtranscriptids=row.names(WTres.sig)
 WTtranscriptids1=as.vector(WTtranscriptids)
 WTtrans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                     "external_gene_name","transcript_biotype"),
-                      filters = "ensembl_transcript_id_version",
-                      values = WTtranscriptids1,
-                      mart = ensembl)
+                                       "external_gene_name","transcript_biotype"),
+                        filters = "ensembl_transcript_id_version",
+                        values = WTtranscriptids1,
+                        mart = ensembl)
 WTsig.trans <- as.data.frame(WTres.sig)
-#total significantly changing genes = 11854
+#total significantly changing genes = 
 WTsigNMD=intersect(row.names(WTsig.trans), NMD.trans$ensembl_transcript_id_version)
-#intersect between NMDgenes and significantly changing genes in RNAseq(wt vs kd) = 950
+#intersect between NMDgenes and significantly changing genes in RNAseq(wt vs kd) = 
 WTre.alltrans<-as.data.frame(WTres_counts)
 
 WTalltrans <- as.data.frame(WTres_counts)
@@ -693,14 +454,10 @@ WT5counts <-as.data.frame(txi.kallisto.tsv$counts)
 WT5counts$mean=rowMeans(WT5counts[,c("SRR4421434","SRR4421435")], na.rm=TRUE) #Filter WT samples
 WT5counts=filter(WT5counts, mean>=5)
 
-listMarts()
-ensembl <- useMart("ensembl")
-ensembl <- useDataset("hsapiens_gene_ensembl",mart=ensembl)
-attributes <- listAttributes(ensembl)
 WT5listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id_version","external_transcript_name"),
-                     filters = "ensembl_transcript_id_version",
-                     values = rownames(WT5counts),
-                     mart = ensembl)
+                      filters = "ensembl_transcript_id_version",
+                      values = rownames(WT5counts),
+                      mart = ensembl)
 
 WT5counts$ensembl_transcript_id_version<-rownames(WT5counts)
 WT5listgenes <- inner_join(WT5counts, WT5listgenes, by = "ensembl_transcript_id_version")
@@ -745,10 +502,10 @@ summary(WT5res.sig$log2FoldChange)
 WT5transcriptids=row.names(WT5res.sig)
 WT5transcriptids1=as.vector(WT5transcriptids)
 WT5trans.detail <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version",
-                                       "external_gene_name","transcript_biotype"),
-                        filters = "ensembl_transcript_id_version",
-                        values = WT5transcriptids1,
-                        mart = ensembl)
+                                        "external_gene_name","transcript_biotype"),
+                         filters = "ensembl_transcript_id_version",
+                         values = WT5transcriptids1,
+                         mart = ensembl)
 WT5sig.trans <- as.data.frame(WT5res.sig)
 #total significantly changing genes = 
 WT5sigNMD=intersect(row.names(WT5sig.trans), NMD.trans$ensembl_transcript_id_version)
@@ -760,3 +517,76 @@ WT5alltrans = WT5alltrans %>% filter(!is.na(padj))
 WT5alltrans<-WT5alltrans[order(rownames(WT5alltrans)),]
 WT5alltrans = rownames_to_column(WT5alltrans, var = "transcript_id")
 write_csv(WT5alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/UPF1_WT5filt_alltrans.csv")
+
+
+##Look at the significant stress granule transcripts##
+Stress_Granule_Transcriptome <- read_excel("Stress_Granule_Transcriptome.xlsx")
+Stress_Granule_Transcriptome = Stress_Granule_Transcriptome %>% rename(ensembl_gene_id = test_id,
+                                                                       SG_sig = significant,
+                                                                       SG_local = Localization) %>% 
+  select(1,6,10)
+SG_alltrans_sig = alltrans_annotated %>% inner_join(Stress_Granule_Transcriptome, by = c("ensembl_gene_id")) %>% 
+  filter(str_detect(transcript_mane_select,"NM") & SG_sig == "yes")
+SG_summary_sig = SG_alltrans_sig %>% group_by(SG_local) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+SG_depleted_res_sig= wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "Neither"),
+                                 exact = FALSE, alternative = "less") #less because we expect the enriched to be higher
+SG_neither_res_sig=  wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "depleted"),
+                                 exact = FALSE, alternative = "greater") #less because we expect the enriched to be higher
+
+#SG_neither_res_sig$p.value
+
+SG_Boxplot_sig = ggplot(data = SG_alltrans_sig)
+SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = SG_local,
+                                                   y = log2FoldChange,
+                                                   fill = SG_local),
+                                               position = position_dodge2(width = 0.9),
+                                               width = 0.8,
+                                               outlier.shape = 21,
+                                               outlier.alpha = 0.5,
+                                               outlier.colour = NA,
+                                               linewidth = 1) +
+  scale_color_met_d("Archambault") +
+  scale_fill_met_d("Archambault") +
+  geom_label(data = SG_summary_sig,
+             aes(x = SG_local,
+                 y = med,
+                 color = SG_local,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = SG_summary_sig,
+            aes(x = SG_local,
+                y = -2.5,
+                color = SG_local,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  geom_text(aes(x = "depleted",
+                y = 4,
+                label = paste0("P(depleted)","=",signif(SG_depleted_res_sig$p.value,digits = 3))),
+            size = 6,
+            color = "#88a0dc") +
+  geom_text(aes(x = "Neither",
+                y = 4,
+                label = paste0("P(neither)","=",signif(SG_neither_res_sig$p.value,digits = 3))),
+            size = 6,
+            color = "#f9d14a",) +
+  labs(x = "Comparison",
+       y = "log2(Fold Change)",
+       fill = "Stress Granule Localization",
+       title = "Stress Granule Localization",
+       caption = "Sig SG genes")+
+  coord_cartesian(y = c(-4,4)) +
+  theme_bw()
+SG_Boxplot_sig
+ggsave("UPF1_KD_Stress_Granule_sig_boxplot.pdf",
+       plot = SG_Boxplot_sig,
+       device = pdf,
+       width = 15,
+       height = 10,
+       units = "in",
+       dpi = 300)
