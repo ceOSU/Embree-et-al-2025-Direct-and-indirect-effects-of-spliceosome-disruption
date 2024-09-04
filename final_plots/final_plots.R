@@ -3590,3 +3590,21 @@ ggsave("NMD_biotype_comparison_upreg.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
+####Pull the transcripts that are up and down in each sample ####
+full_upregulated = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_upregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(log2FoldChange > 0.58 & baseMean > 100 & padj < 0.05) %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id))
+  full_upregulated = full_upregulated %>% full_join(eval(parse(text = paste0(i,"_upregulated"))))
+}
+full_upregulated_count = full_upregulated %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_upregulated = full_upregulated %>% filter(count >= 17)
