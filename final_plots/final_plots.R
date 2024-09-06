@@ -3607,4 +3607,33 @@ full_upregulated_count = full_upregulated %>% filter(Sample != "UPF1" | Sample !
             med_FC = median(log2FoldChange),
             avg_BM = mean(baseMean),
             avg_FC = mean(log2FoldChange))
-shared_upregulated = full_upregulated %>% filter(count >= 17)
+shared_upregulated = full_upregulated_count %>% filter(count >= 10)
+shared_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_upregulated$ENST.ID,
+                     mart = ensembl)
+shared_upregulated = shared_upregulated %>% full_join(shared_genes,by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_upregulated,"upregulated_transcripts_10ormore.csv")
+
+full_downregulated = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_downregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(log2FoldChange < 0.58 & baseMean > 100 & padj < 0.05) %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id))
+  full_downregulated = full_downregulated %>% full_join(eval(parse(text = paste0(i,"_downregulated"))))
+}
+full_downregulated_count = full_downregulated %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_downregulated = full_downregulated_count %>% filter(count >= 10)
+shared_genes_down = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_downregulated$ENST.ID,
+                     mart = ensembl)
+shared_downregulated = shared_downregulated %>% full_join(shared_genes_down,by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_downregulated,"downregulated_transcripts_10ormore.csv")
