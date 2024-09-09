@@ -1862,9 +1862,9 @@ ggsave("AS_noNMD_boxplot_FC_plot.pdf",
        dpi = 300)
 
 ####Look at PTC+ transcripts that are not AS####
-PTC_list = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
-PTC_list = PTC_list %>% select(2:4)
-noAS_NMD = No_AS_only %>% inner_join(PTC_list,by = c("ENST.ID" = "transID"))
+sPTC_list = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
+sPTC_list = sPTC_list %>% select(2:4)
+noAS_NMD = No_AS_only %>% inner_join(sPTC_list,by = c("ENST.ID" = "transID"))
 noAS_NMD_sum = noAS_NMD %>% group_by(Sample,PTC) %>% 
   summarise(n = n(),
             med = median(log2FoldChange))
@@ -3083,14 +3083,14 @@ ggsave("main_fig_MANE_vs_PTC_vs_LA_noNMD.pdf",
 #### Look at MANE vs PTC vs Other genes from the same set of genes ####
 PTC_genes = getBM(attributes = "ensembl_gene_id",
                   filters = "ensembl_transcript_id",
-                  values = PTC_list$transID,
+                  values = sPTC_list$transID,
                   mart = ensembl)
 PTC_isoforms = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_biotype",
                                     "transcript_mane_select"),
                      filters = "ensembl_gene_id",
                      values = PTC_genes$ensembl_gene_id,
                      mart = ensembl)
-all_PTCgenes = PTC_list %>% 
+all_PTCgenes = sPTC_list %>% 
   full_join(PTC_isoforms,by = c("transID" = "ensembl_transcript_id")) %>% 
   mutate(Type = case_when(str_detect(transcript_mane_select,"NM") ~ "MANE",
                           PTC == "TRUE" ~ "PTC",
@@ -3344,10 +3344,10 @@ ggsave("novel_kallisto_all_isoforms.pdf",
 #Filter to only the genes on the NMD list
 PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
                   filters = "ensembl_transcript_id",
-                  values = PTC_list$transID,
+                  values = sPTC_list$transID,
                   mart = ensembl)
 NK_PTC_only = NK_full_alltrans %>% filter(ensembl_gene_id %in% PTC_genes$ensembl_gene_id)
-NK_PTC_only = NK_PTC_only %>% left_join(PTC_list, by = c("ENST.ID" = "transID",
+NK_PTC_only = NK_PTC_only %>% left_join(sPTC_list, by = c("ENST.ID" = "transID",
                                                          "external_gene_name" = "Gene"))
 NK_PTC_only = NK_PTC_only %>% mutate(Type = case_when(Category == "MANE" ~ "MANE",
                                                       Category == "Other" & PTC.y == "TRUE" ~ "PTC",
@@ -3467,7 +3467,7 @@ master_list = master_list %>% select(Sample,log2FoldChange,ENST.ID,baseMean,padj
 master_list = master_list %>% group_by(Sample, ENST.ID) %>% distinct(ENST.ID, .keep_all = TRUE) %>% ungroup() #removes some rows that got duplicated when making the ENST.ID column
 master_list = master_list %>% pivot_wider(names_from = Sample, values_from = c(log2FoldChange,baseMean,padj),
                                           names_vary = "slowest",values_fill = NA)
-master_list = master_list %>% left_join(PTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
+master_list = master_list %>% left_join(sPTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
   left_join(Saltzman_PE %>% select(ensembl_transcript_id,Isoform),
                                    by = c("ENST.ID" = "ensembl_transcript_id"))
 master_list = master_list %>% 
@@ -3511,7 +3511,8 @@ ggvenn = ggVennDiagram(s,
                        label_alpha = 0.5,
                        label = "count") +
   scale_fill_moma_c("Ernst") +
-  labs(title = "Upregulated Transcripts")
+  labs(title = "Upregulated NMD Biotype Transcripts",
+       caption = "Base Mean > 100, 1.5 fold up, padj < 0.05")
 ggvenn
 ggsave("Upregulated_overlap.pdf",
        plot = ggvenn,
@@ -3637,3 +3638,36 @@ shared_genes_down = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_i
                      mart = ensembl)
 shared_downregulated = shared_downregulated %>% full_join(shared_genes_down,by = c("ENST.ID" = "ensembl_transcript_id"))
 write_csv(shared_downregulated,"downregulated_transcripts_10ormore.csv")
+
+
+#Look at the PTC+ isoforms that are upregulated
+all_PTC_list = read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/ENST_PTC-EPI-TFG.txt", 
+                          delim = "\t", escape_double = FALSE, 
+                          trim_ws = TRUE)
+
+full_sPTC_up = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_PTC_annotated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           left_join(sPTC_list, by = c("ENST.ID" = "transID")) %>% 
+           left_join(all_PTC_list, by = c("ENST.ID" = "ENST-ID"))  %>%
+           rename(sPTC = PTC) %>% 
+           select("baseMean","log2FoldChange","padj","ENST.ID","Sample","ensembl_gene_id","sPTC","PTC-Status"))
+  assign(paste0(i,"_sPTC_upregulated"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(sPTC == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
+  full_sPTC_up = full_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_upregulated"))))
+}
+full_sPTC_count = full_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_sPTC_up = full_sPTC_count %>% filter(count > 5)
+shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_sPTC_up$ENST.ID,
+                     mart = ensembl)
+shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
