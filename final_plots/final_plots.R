@@ -3646,17 +3646,28 @@ all_PTC_list = read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/B
                           trim_ws = TRUE)
 
 full_sPTC_up = tibble(Sample = character())
+lax_sPTC_up = tibble(Sample = character())
+full_PTC_up = tibble(Sample = character())
 for (i in all_GOI) {
   assign(paste0(i,"_PTC_annotated"),
          eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
            left_join(sPTC_list, by = c("ENST.ID" = "transID")) %>% 
            left_join(all_PTC_list, by = c("ENST.ID" = "ENST-ID"))  %>%
-           rename(sPTC = PTC) %>% 
-           select("baseMean","log2FoldChange","padj","ENST.ID","Sample","ensembl_gene_id","sPTC","PTC-Status"))
+           rename(sPTC = PTC,
+                  PTC_plus = "PTC-Status") %>% 
+           select("baseMean","log2FoldChange","padj","ENST.ID","Sample","ensembl_gene_id","sPTC","PTC_plus"))
   assign(paste0(i,"_sPTC_upregulated"),
          eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
            filter(sPTC == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
+  assign(paste0(i,"_sPTC_lax_up"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(sPTC == "TRUE" & baseMean > 5 & log2FoldChange > 0.58 & padj < 0.05))
+  assign(paste0(i,"_PTC_upregulated"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(PTC_plus == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
   full_sPTC_up = full_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_upregulated"))))
+  lax_sPTC_up = lax_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_lax_up"))))
+  full_PTC_up = full_PTC_up %>% full_join(eval(parse(text = paste0(i,"_PTC_upregulated"))))
 }
 full_sPTC_count = full_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
@@ -3671,3 +3682,29 @@ shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_i
                      values = shared_sPTC_up$ENST.ID,
                      mart = ensembl)
 shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+lax_sPTC_count = lax_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_lax_up = lax_sPTC_count %>% filter(count > 5)
+shared_lax_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                         filters = "ensembl_transcript_id",
+                         values = shared_lax_up$ENST.ID,
+                         mart = ensembl)
+shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+PTC_up_count = full_PTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_PTC_up = PTC_up_count %>% filter(count > 5)
+shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                         filters = "ensembl_transcript_id",
+                         values = shared_PTC_up$ENST.ID,
+                         mart = ensembl)
+shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
