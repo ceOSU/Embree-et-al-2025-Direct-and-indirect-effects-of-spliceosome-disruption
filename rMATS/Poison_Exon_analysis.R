@@ -199,15 +199,11 @@ PE_NMD_transcripts = PE_biotype %>% filter(transcript_biotype == "nonsense_media
 write_csv(PE_NMD_transcripts, file = "Thomas_NMD_transcripts.csv") #933 transcripts
 
 ####Combine the two PE gene lists to make a combined list####
-Saltzman_NMD = inclusion_NMD_transcripts %>% mutate(Source = "Saltzman") %>%
-  filter(!ensembl_transcript_id %in% PE_NMD_transcripts$ensembl_transcript_id) #Removes the transcripts in the other list from this annotation
-Thomas_NMD = PE_NMD_transcripts %>% select(1:4) %>% 
-  mutate(Source = "Thomas") %>% #Annotate where the exons come from
-  filter(!ensembl_transcript_id %in% inclusion_NMD_transcripts$ensembl_transcript_id) #Removes the transcripts in the other list
-Both_NMD = inclusion_NMD_transcripts %>% inner_join(PE_NMD_transcripts) %>% 
-  mutate(Source = "Both") #44 transcripts
-full_NMD = Saltzman_NMD %>% full_join(Thomas_NMD) %>% full_join(Both_NMD) %>% 
-  mutate(isoform = "NMD")
+Thomas_NMD = PE_NMD_transcripts %>% select(1:4)
+full_NMD = inclusion_NMD_transcripts %>% full_join(Thomas_NMD) %>% 
+  mutate(Source = case_when(ensembl_transcript_id %in% inclusion_NMD_transcripts$ensembl_transcript_id & ensembl_transcript_id %in% Thomas_NMD$ensembl_transcript_id ~ "Both",
+                            ensembl_transcript_id %in% inclusion_NMD_transcripts$ensembl_transcript_id ~ "Saltzman",
+                            ensembl_transcript_id %in% Thomas_NMD$ensembl_transcript_id ~ "Thomas"))
 NMD_summary = full_NMD %>% group_by(Source) %>% 
   summarise(n = n(),
             genes = n_distinct(ensembl_gene_id),
