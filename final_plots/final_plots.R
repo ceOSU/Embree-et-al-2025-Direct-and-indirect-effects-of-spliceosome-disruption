@@ -1960,7 +1960,7 @@ for (i in Disease_sample) {
   all_DIS_res = all_DIS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PTC_res$p.value"))))
 }
 Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
-
+write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
 
 DIS_boxplot = ggplot(data = Disease_PTC)
 DIS_boxplot = DIS_boxplot + 
@@ -2033,6 +2033,7 @@ PE_DIS_sum = PE_DIS %>% group_by(Sample,isoform) %>%
             quart = quantile(log2FoldChange, 0.5)) #calculate the summary stats for labeling the plots
 PE_DIS_sum = PE_DIS_sum %>% group_by(Sample) %>% mutate(Total = sum(n),
                                                         Total_genes = sum(genes))
+write_csv(PE_DIS,"Disease_PE_transcripts.csv")
 
 ## Calculates the P-value for each plot
 DIS_PE_res = tibble(Sample = as.character(), P = as.numeric())
@@ -3682,6 +3683,7 @@ shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_i
                      values = shared_sPTC_up$ENST.ID,
                      mart = ensembl)
 shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_sPTC_up,"sPTC_upregulated.csv")
 lax_sPTC_count = lax_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
   summarise(count = n(),
@@ -3695,6 +3697,7 @@ shared_lax_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
                          values = shared_lax_up$ENST.ID,
                          mart = ensembl)
 shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_lax_up,"lax_sPTC_upregulated.csv")
 PTC_up_count = full_PTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
   summarise(count = n(),
@@ -3708,3 +3711,67 @@ shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
                          values = shared_PTC_up$ENST.ID,
                          mart = ensembl)
 shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
+write_csv(shared_PTC_up,"sPTC_upregualted.csv")
+
+
+####Look at Risdiplam treatment####
+Risdiplam_alltrans <- read_csv("Risdiplam_DBfilt_alltrans.csv")
+View(Risdiplam_alltrans)
+
+Risdiplam_alltrans_annotation = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                                                     "transcript_mane_select","transcript_biotype"),
+                                      filters = "ensembl_transcript_id",
+                                      values = Risdiplam_alltrans$ENST.ID,
+                                      mart = ensembl)
+Risdiplam_alltrans = Risdiplam_alltrans %>% left_join(Risdiplam_alltrans_annotation,
+                                                      by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  mutate(Sample = "High_vs_DMSO")
+
+#Look at MANE vs PTC vs Other
+Risdiplam_MANE_PTC = Risdiplam_alltrans %>% inner_join(all_PTCgenes, by = c("ENST.ID" = "transID"))
+Ris_PTC_summary = Risdiplam_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
+                                                                         med = median(log2FoldChange))
+Ris_PTC = ggplot(data = Risdiplam_MANE_PTC)
+Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
+                                     y = log2FoldChange,
+                                     fill = factor(Type,levels = c("MANE","PTC","Other"))),
+             position = position_dodge2(width = 0.9),
+             width = 0.8,
+             outlier.shape = 21,
+             outlier.alpha = 0.5,
+             outlier.colour = NA,
+             linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = Ris_PTC_summary,
+                  aes(x = Sample,
+                      y = -3,
+                      color = factor(Type,levels = c("MANE","PTC","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = Ris_PTC_summary,
+             aes(x = Sample,
+                 y = med,
+                 color = factor(Type,levels = c("MANE","PTC","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 7) +
+  labs(y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+Ris_PTC
+ggsave("Risdiplam_sPTC_boxplot.pdf",
+       plot = Ris_PTC,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+

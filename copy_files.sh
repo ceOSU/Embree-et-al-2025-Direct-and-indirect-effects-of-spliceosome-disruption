@@ -18,6 +18,12 @@ do
         echo "$i" novel kallisto exists
         cp ./novel_kallisto/*.R "$GR_dir"/Kallisto_and_DEseq2/$i/""$i""_novel_kallisto.R
     fi 
+    
+    if [ -d gene_level ] #looks for the gene_level directory
+    then
+        echo "$i" novel kallisto exists
+        cp ./gene_level/*.R "$GR_dir"/Kallisto_and_DEseq2/$i/""$i""_gene_level_analysis.R
+    fi 
 
     cd "$GR_dir"
 
