@@ -132,8 +132,8 @@ head(res.sig)
 plotMA(res_counts, padj = TRUE, ylim=c(-6,6), main ="MA plot: WT vs KD")
 
 plotMA(res.sig)
-sum( res.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=9860
-sum( res.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=7206
+sum( res.sig$log2FoldChange < 0, na.rm=TRUE )#upregulated genes=963
+sum( res.sig$log2FoldChange > 0, na.rm=TRUE )#downregulated genes=805
 head(res.sig$log2FoldChange > 0)
 
 head( res.sig[ order( res.sig$log2FoldChange ), ] )

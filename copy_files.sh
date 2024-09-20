@@ -21,7 +21,7 @@ do
     
     if [ -d gene_level ] #looks for the gene_level directory
     then
-        echo "$i" novel kallisto exists
+        echo "$i" gene level analysis exists
         cp ./gene_level/*.R "$GR_dir"/Kallisto_and_DEseq2/$i/""$i""_gene_level_analysis.R
     fi 
 
