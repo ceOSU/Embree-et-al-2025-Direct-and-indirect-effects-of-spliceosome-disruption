@@ -1960,7 +1960,7 @@ for (i in Disease_sample) {
   all_DIS_res = all_DIS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PTC_res$p.value"))))
 }
 Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
-
+write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
 
 DIS_boxplot = ggplot(data = Disease_PTC)
 DIS_boxplot = DIS_boxplot + 
@@ -2012,6 +2012,51 @@ ggsave("Disease_boxplot_FC_plot.pdf",
        units = "in",
        dpi = 300)
 
+##Volcano plots of Disease PTC
+Disease_PTC_vol_data = Disease_PTC %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                                    log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                                    TRUE ~ "NS"))
+Disease_PTC_vol_labs = Disease_PTC_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PTC_vol_labs,"top10_sig_Disease_PTC.csv")
+
+vol_colors = c("UP" = "#F5BC00",
+               "DOWN" = "#840B2D",
+               "NS" = "#9D9C9D")
+Disease_PTC_vol = ggplot(data = Disease_PTC_vol_data)
+Disease_PTC_vol = Disease_PTC_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = Gene),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PTC gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PTC_vol
+ggsave("Disease_PTC_volcano.pdf",
+       Disease_PTC_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
 ##Look at the disease effect on PE##
 for (i in Disease_sample) {
   print(i)
@@ -2033,6 +2078,7 @@ PE_DIS_sum = PE_DIS %>% group_by(Sample,isoform) %>%
             quart = quantile(log2FoldChange, 0.5)) #calculate the summary stats for labeling the plots
 PE_DIS_sum = PE_DIS_sum %>% group_by(Sample) %>% mutate(Total = sum(n),
                                                         Total_genes = sum(genes))
+write_csv(PE_DIS,"Disease_PE_transcripts.csv")
 
 ## Calculates the P-value for each plot
 DIS_PE_res = tibble(Sample = as.character(), P = as.numeric())
@@ -2093,6 +2139,104 @@ ggsave("Disease_PE_boxplot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
+##Volcano plots of Disease PE
+Disease_PE_vol_data = PE_DIS %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                              log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                              TRUE ~ "NS"))
+Disease_PE_vol_labs = Disease_PE_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PE_vol_labs,"top10_sig_Disease_PE.csv")
+
+Disease_PE_vol = ggplot(data = Disease_PE_vol_data)
+Disease_PE_vol = Disease_PE_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PE_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = external_gene_name),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PE gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PE_vol
+ggsave("Disease_PE_volcano.pdf",
+       Disease_PE_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+#Volcano plot of all transcripts#
+Disease_all_vol_data = DIS_alltrans %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                        log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                        TRUE ~ "NS"))
+Dis_all_genes = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id","transcript_biotype",
+                                     "transcript_mane_select"),
+                      filters = "ensembl_transcript_id",
+                      values = Disease_all_vol_data$ENST.ID,
+                      mart = ensembl)
+Dis_all_genes = Dis_all_genes %>% distinct(ensembl_transcript_id, .keep_all = TRUE)
+Disease_all_vol_data = Disease_all_vol_data %>% left_join(Dis_all_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+Disease_all_vol_labs = Disease_all_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_all_vol_labs,"top10_sig_Disease_all_transcripts.csv")
+
+Disease_all_vol = ggplot(data = Disease_all_vol_data)
+Disease_all_vol = Disease_all_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                             color = "grey",
+                                             linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = Gene),
+                   show.legend = FALSE,
+                   color = "black",
+                   max.overlaps = NA) +
+  geom_label_repel(data = Disease_all_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = external_gene_name,
+                       color = Sig),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "all transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_all_vol
+ggsave("Disease_all_volcano.pdf",
+       Disease_all_vol,
+       width = 30,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
 
 ## Look at the no NMD transcripts in the disease samples##
 Dis_no_NMD = DIS_alltrans %>% inner_join(MS_noNMD_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
@@ -3682,6 +3826,7 @@ shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_i
                      values = shared_sPTC_up$ENST.ID,
                      mart = ensembl)
 shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_sPTC_up,"sPTC_upregulated.csv")
 lax_sPTC_count = lax_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
   summarise(count = n(),
@@ -3695,6 +3840,7 @@ shared_lax_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
                          values = shared_lax_up$ENST.ID,
                          mart = ensembl)
 shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_lax_up,"lax_sPTC_upregulated.csv")
 PTC_up_count = full_PTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
   summarise(count = n(),
@@ -3708,3 +3854,138 @@ shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
                          values = shared_PTC_up$ENST.ID,
                          mart = ensembl)
 shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
+write_csv(shared_PTC_up,"sPTC_upregualted.csv")
+
+
+####Look at Risdiplam treatment####
+Risdiplam_alltrans <- read_csv("Risdiplam_DBfilt_alltrans.csv")
+View(Risdiplam_alltrans)
+
+Risdiplam_alltrans_annotation = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                                                     "transcript_mane_select","transcript_biotype"),
+                                      filters = "ensembl_transcript_id",
+                                      values = Risdiplam_alltrans$ENST.ID,
+                                      mart = ensembl)
+Risdiplam_alltrans = Risdiplam_alltrans %>% left_join(Risdiplam_alltrans_annotation,
+                                                      by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  mutate(Sample = "High_vs_DMSO")
+
+#Look at MANE vs PTC vs Other
+Risdiplam_MANE_PTC = Risdiplam_alltrans %>% inner_join(all_PTCgenes, by = c("ENST.ID" = "transID"))
+Ris_PTC_summary = Risdiplam_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
+                                                                         med = median(log2FoldChange))
+Ris_PTC = ggplot(data = Risdiplam_MANE_PTC)
+Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
+                                     y = log2FoldChange,
+                                     fill = factor(Type,levels = c("MANE","PTC","Other"))),
+             position = position_dodge2(width = 0.9),
+             width = 0.8,
+             outlier.shape = 21,
+             outlier.alpha = 0.5,
+             outlier.colour = NA,
+             linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = Ris_PTC_summary,
+                  aes(x = Sample,
+                      y = -3,
+                      color = factor(Type,levels = c("MANE","PTC","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = Ris_PTC_summary,
+             aes(x = Sample,
+                 y = med,
+                 color = factor(Type,levels = c("MANE","PTC","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 7) +
+  labs(y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+Ris_PTC
+ggsave("Risdiplam_sPTC_boxplot.pdf",
+       plot = Ris_PTC,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#### Look at the gene level DE analysis ####
+full_GL_NMD_alltrans = tibble(Sample = character())
+full_GL_NMD_res = tibble(Sample = character(), P = numeric())
+for (i in all_GOI) {
+  assign(paste0(i,"_GL_NMD_alltrans"),
+         read_csv(paste0(i,"_geneLevel_NMD_alltrans.csv")))
+  assign(paste0(i,"_GL_NMD_alltrans"),
+         eval(parse(text = paste0(i,"_GL_NMD_alltrans"))) %>% 
+           mutate(Sample = i))
+  assign(paste0(i,"_GL_NMD_res"),
+         wilcox.test(log2FoldChange ~ NMD, data = eval(parse(text = paste0(i,"_GL_NMD_alltrans"))),
+                     exact = FALSE, alternative = "greater")) #greater because we expect the NMD to be higher
+  full_GL_NMD_res = full_GL_NMD_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_GL_NMD_res$p.value"))))
+  full_GL_NMD_alltrans = full_GL_NMD_alltrans %>% full_join(eval(parse(text = paste0(i,"_GL_NMD_alltrans"))))
+}
+full_GL_NMD_summary = full_GL_NMD_alltrans %>% group_by(Sample,NMD) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange)) %>% 
+  left_join(full_GL_NMD_res)
+
+GL_NMD_colors = NMD_GL_colors = c("NMD" = "#F27D2E",
+                                  "noNMD" = "#B27092")
+GL_NMD_box = ggplot(data = full_GL_NMD_alltrans)
+GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = Sample,
+                                     y = log2FoldChange,
+                                     fill = factor(NMD,levels = c("NMD","noNMD"))),
+                                 position = position_dodge2(width = 0.9),
+                                 width = 0.8,
+                                 outlier.shape = 21,
+                                 outlier.alpha = 0.5,
+                                 outlier.colour = NA,
+                                 linewidth = 1) +
+  scale_fill_manual(values = GL_NMD_colors) +
+  scale_color_manual(values = GL_NMD_colors) +
+  geom_text_repel(data = full_GL_NMD_summary,
+                  aes(x = Sample,
+                      y = -3,
+                      color = factor(NMD,levels = c("NMD","noNMD")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 8,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = full_GL_NMD_summary,
+             aes(x = Sample,
+                 y = med,
+                 color = factor(NMD,levels = c("NMD","noNMD")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = full_GL_NMD_summary %>% filter(NMD == "NMD"),
+             aes(x = Sample,
+                 y = 3,
+                 label = round(P, digits = 3)),
+             show.legend = F,
+             size = 8,
+             color = "black") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Gene Type") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+GL_NMD_box
+ggsave("Gene_level_NMD_boxplot.pdf",
+       plot = GL_NMD_box,
+       width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
