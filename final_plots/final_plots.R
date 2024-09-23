@@ -1236,7 +1236,7 @@ ggsave("Saltzman_PE_boxplot_main_fig.pdf",
        units = "in",
        dpi = 300)
 
-#### Make TPM plot for AS genes vs not####
+#### Make FC plot for AS genes vs not####
 Novel_splicing = read_csv("all_novel_splice_events.csv")
 AF_AS_combined = tibble(Sample = character())
 for (i in all_GOI) {
@@ -1252,7 +1252,7 @@ for (i in all_GOI) {
   
   assign(paste0(i,"_alltrans_genes"),
          getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_mane_select",
-                              "transcript_biotype"),
+                              "transcript_biotype","external_gene_name"),
                filters = "ensembl_transcript_id",
                values = eval(parse(text = paste0(i,"_full_alltrans$ENST.ID"))),
                mart = ensembl))
@@ -1932,6 +1932,215 @@ ggsave("noAS_NMD_boxplot_FC_plot.pdf",
        device = pdf,
        plot = noAS_NMD_boxplot,
        width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+####Determine if NMD genes are AS####
+NMD_genes = c("EIF4A3","RBM8A","MAGOH","RNPS1","CASC3","ICE1","PYM1",
+              "UPF1","UPF2","UPF3B","UPF3A","ETF1","GSPT1","NCBP1","NCBP2","EIF4E","SMG1","SMG8","SMG9","DHX34","RUVBL1","RUVBL2",
+              "SMG5","SMG7","SMG6","CNOT8","DCP1A","PNRC2","DCP2","MOV10","PP2CA","PPP2R1A","XRN1","DIS3L","DIS3L2","EXOSC10","PARN",
+              "NBAS",
+              "PABPC1","EIF4G1","FMR1","EIF3E","SRSF1","SEC13","GNL2")
+NMD_AS = AF_AS_MANE %>% filter(external_gene_name %in% NMD_genes)
+NMD_AS_sum = NMD_AS %>% group_by(Sample, AS_gene) %>% summarise(n = n(),
+                                                                med = median(log2FoldChange))
+  
+NMD_AS_boxplot = ggplot(data = NMD_AS)
+NMD_AS_boxplot = NMD_AS_boxplot + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_sum,
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_sum,
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "full NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_boxplot
+ggsave("NMD_AS_boxplot.pdf",
+       device = pdf,
+       plot = NMD_AS_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+NMD_AS_boxplot_main = ggplot(data = NMD_AS %>% filter(Sample %in% Pres_KD))
+NMD_AS_boxplot_main = NMD_AS_boxplot_main + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "full NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_boxplot_main
+ggsave("NMD_AS_boxplot_mainFig.pdf",
+       device = pdf,
+       plot = NMD_AS_boxplot_main,
+       width = 22,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+filt_NMD_genes = c("EIF4A3","RBM8A","MAGOH","RNPS1","CASC3","ICE1","PYM1",
+                   "UPF1","UPF2","UPF3B","UPF3A","ETF1","GSPT1","NCBP1","NCBP2","EIF4E","SMG1","SMG8","SMG9","DHX34","RUVBL1","RUVBL2",
+                   "SMG5","SMG7","SMG6","MOV10")
+NMD_AS_filt = AF_AS_MANE %>% filter(external_gene_name %in% filt_NMD_genes)
+NMD_AS_filt_sum = NMD_AS_filt %>% group_by(Sample, AS_gene) %>% summarise(n = n(),
+                                                                med = median(log2FoldChange))
+
+NMD_AS_filt_boxplot = ggplot(data = NMD_AS_filt)
+NMD_AS_filt_boxplot = NMD_AS_filt_boxplot + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_filt_sum,
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_filt_sum,
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "core NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_filt_boxplot
+ggsave("NMD_AS_filt_boxplot.pdf",
+       device = pdf,
+       plot = NMD_AS_filt_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+NMD_AS_filt_boxplot_main = ggplot(data = NMD_AS_filt %>% filter(Sample %in% Pres_KD))
+NMD_AS_filt_boxplot_main = NMD_AS_filt_boxplot_main + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "core NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_filt_boxplot_main
+ggsave("NMD_AS_filt_boxplot_mainFig.pdf",
+       device = pdf,
+       plot = NMD_AS_filt_boxplot_main,
+       width = 22,
        height = 10,
        units = "in",
        dpi = 300)
@@ -3919,14 +4128,19 @@ ggsave("Risdiplam_sPTC_boxplot.pdf",
        dpi = 300)
 
 #### Look at the gene level DE analysis ####
+full_GL_alltrans = tibble(Sample = character())
 full_GL_NMD_alltrans = tibble(Sample = character())
 full_GL_NMD_res = tibble(Sample = character(), P = numeric())
 for (i in all_GOI) {
-  assign(paste0(i,"_GL_NMD_alltrans"),
+  assign(paste0(i,"_GL_alltrans"),
          read_csv(paste0(i,"_geneLevel_NMD_alltrans.csv")))
-  assign(paste0(i,"_GL_NMD_alltrans"),
-         eval(parse(text = paste0(i,"_GL_NMD_alltrans"))) %>% 
+  assign(paste0(i,"_GL_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
            mutate(Sample = i))
+  full_GL_alltrans = full_GL_alltrans %>% full_join(eval(parse(text = paste0(i,"_GL_alltrans"))))
+  assign(paste0(i,"_GL_NMD_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
+           filter(!is.na(NMD)))
   assign(paste0(i,"_GL_NMD_res"),
          wilcox.test(log2FoldChange ~ NMD, data = eval(parse(text = paste0(i,"_GL_NMD_alltrans"))),
                      exact = FALSE, alternative = "greater")) #greater because we expect the NMD to be higher
@@ -3989,3 +4203,11 @@ ggsave("Gene_level_NMD_boxplot.pdf",
        units = "in",
        device = pdf,
        dpi = 300)
+
+#Gene level AS vs non-AS#
+AS_genes_only = AF_AS_MANE %>% select(Sample, ensembl_gene_id, AS_gene)
+for (i in all_GOI) {
+  assign(paste0(i,"_GL_AS_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
+           full_join(AS_genes_only %>% filter(Sample == i), by = c("Sample", "ENSG.ID" = "ensembl_gene_id")))
+}
