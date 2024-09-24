@@ -519,26 +519,103 @@ WT5alltrans = rownames_to_column(WT5alltrans, var = "transcript_id")
 write_csv(WT5alltrans,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/UPF1_WT5filt_alltrans.csv")
 
 
-##Look at the significant stress granule transcripts##
+##Look at how transcripts that are enriched in stress granules are##
 Stress_Granule_Transcriptome <- read_excel("Stress_Granule_Transcriptome.xlsx")
-Stress_Granule_Transcriptome = Stress_Granule_Transcriptome %>% rename(ensembl_gene_id = test_id,
-                                                                       SG_sig = significant,
-                                                                       SG_local = Localization) %>% 
-  select(1,6,10)
-SG_alltrans_sig = alltrans_annotated %>% inner_join(Stress_Granule_Transcriptome, by = c("ensembl_gene_id")) %>% 
-  filter(str_detect(transcript_mane_select,"NM") & SG_sig == "yes")
-SG_summary_sig = SG_alltrans_sig %>% group_by(SG_local) %>% 
+Stress_Granule_Transcriptome = Stress_Granule_Transcriptome %>% select(1,6,10:13) %>% 
+  rename(ensembl_gene_id = test_id,
+         SG_local = Localization,
+         SG_sig = significant)
+SG_alltrans = alltrans_annotated %>% inner_join(Stress_Granule_Transcriptome, by = c("ensembl_gene_id")) %>% 
+  filter(str_detect(transcript_mane_select,"NM")) %>% mutate(Sample = "ENCODE_UPF1_KD")
+SG_summary = SG_alltrans %>% group_by(Sample,SG_local) %>% 
   summarise(n = n(),
             med = median(log2FoldChange))
-SG_depleted_res_sig= wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "Neither"),
-                                 exact = FALSE, alternative = "less") #less because we expect the enriched to be higher
-SG_neither_res_sig=  wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "depleted"),
-                                 exact = FALSE, alternative = "greater") #less because we expect the enriched to be higher
+SG_depleted_res = tibble(Sample = character(), P_dep = numeric())
+SG_neither_res = tibble(Sample = character(), P_neither = numeric())
 
-#SG_neither_res_sig$p.value
+  SG_depleted_res = wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans %>% filter(SG_local != "Neither"),
+                     exact = FALSE, alternative = "less") #less because we expect the enriched to be higher
+  SG_depleted_res_table = tibble(Sample = "ENCODE_UPF1_KD",P = SG_depleted_res$p.value)
+  SG_neither_res= wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans %>% filter(SG_local != "depleted"),
+                     exact = FALSE, alternative = "greater") #less because we expect the enriched to be higher
+  SG_neither_res_table = tibble(Sample = "ENCODE_UPF1_KD",P = SG_neither_res$p.value)
+
+SG_colors = c("depleted" = "#CE5374",
+              "Neither" = "#247BA0",
+              "enriched" = "#61AB36")
+SG_Boxplot = ggplot(data = SG_alltrans)
+SG_Boxplot = SG_Boxplot + geom_boxplot(aes(x = Sample,
+                                           y = log2FoldChange,
+                                           fill = SG_local),
+                                       position = position_dodge2(width = 0.9),
+                                       width = 0.8,
+                                       outlier.shape = 21,
+                                       outlier.alpha = 0.5,
+                                       outlier.colour = NA,
+                                       linewidth = 1) +
+  scale_color_manual(values = SG_colors) +
+  scale_fill_manual(values = SG_colors) +
+  geom_label(data = SG_summary,
+             aes(x = Sample,
+                 y = med,
+                 color = SG_local,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = SG_summary,
+            aes(x = Sample,
+                y = -2.5,
+                color = SG_local,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  geom_text(data = SG_depleted_res_table,
+            aes(x = Sample,
+                y = 4,
+                label = paste0("P(depleted)","=",signif(P,digits = 3))),
+            size = 6,
+            color = "#CE5374") +
+  geom_text(data = SG_neither_res_table,
+            aes(x = Sample,
+                y = 3,
+                label = paste0("P(neither)","=",signif(P,digits = 3))),
+            size = 6,
+            color = "#247BA0",) +
+  labs(y = "log2(Fold Change)",
+       fill = "Stress Granule Localization",
+       title = "Stress Granule Localization")+
+  coord_cartesian(y = c(-4,4)) +
+  theme_bw()
+SG_Boxplot
+ggsave("ENCODE_UPF1_Stress_Granule_boxplot.pdf",
+       plot = SG_Boxplot,
+       device = pdf,
+       width = 15,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+##Look at the significant stress granule transcripts##
+SG_alltrans_sig = SG_alltrans %>% filter(SG_sig == "yes")
+SG_summary_sig = SG_alltrans_sig %>% group_by(Sample,SG_local) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+SG_depleted_res_sig = tibble(Sample = character(), P_dep = numeric())
+SG_neither_res_sig = tibble(Sample = character(), P_neither = numeric())
+SG_depleted_res_sig= wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "Neither"),
+                     exact = FALSE, alternative = "less") #less because we expect the enriched to be higher
+SG_depleted_res_sig_table = tibble(Sample = "ENCODE_UPF1_KD",P = SG_depleted_res_sig$p.value)
+SG_neither_res_sig= wilcox.test(log2FoldChange ~ SG_local, data = SG_alltrans_sig %>% filter(SG_local != "depleted"),
+                     exact = FALSE, alternative = "greater") #less because we expect the enriched to be higher
+SG_neither_res_sig_table = tibble(Sample = "ENCODE_UPF1_KD",P = SG_neither_res_sig$p.value)
+
+
+SG_summary_sig = SG_summary_sig
 
 SG_Boxplot_sig = ggplot(data = SG_alltrans_sig)
-SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = SG_local,
+SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = Sample,
                                                    y = log2FoldChange,
                                                    fill = SG_local),
                                                position = position_dodge2(width = 0.9),
@@ -547,10 +624,10 @@ SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = SG_local,
                                                outlier.alpha = 0.5,
                                                outlier.colour = NA,
                                                linewidth = 1) +
-  scale_color_met_d("Archambault") +
-  scale_fill_met_d("Archambault") +
+  scale_color_manual(values = SG_colors) +
+  scale_fill_manual(values = SG_colors) +
   geom_label(data = SG_summary_sig,
-             aes(x = SG_local,
+             aes(x = Sample,
                  y = med,
                  color = SG_local,
                  label = round(med, digits = 3)),
@@ -558,24 +635,26 @@ SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = SG_local,
              position = position_dodge2(width = 0.8),
              size = 5) +
   geom_text(data = SG_summary_sig,
-            aes(x = SG_local,
+            aes(x = Sample,
                 y = -2.5,
                 color = SG_local,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
             size = 8) +
-  geom_text(aes(x = "depleted",
+  geom_text(data = SG_depleted_res_sig_table,
+            aes(x = Sample,
                 y = 4,
-                label = paste0("P(depleted)","=",signif(SG_depleted_res_sig$p.value,digits = 3))),
+                label = paste0("P(depleted)","=",signif(P,digits = 3))),
             size = 6,
-            color = "#88a0dc") +
-  geom_text(aes(x = "Neither",
-                y = 4,
-                label = paste0("P(neither)","=",signif(SG_neither_res_sig$p.value,digits = 3))),
+            color = "#CE5374") +
+  geom_text(data = SG_neither_res_sig_table,
+            aes(x = Sample,
+                y = 3,
+                label = paste0("P(neither)","=",signif(P,digits = 3))),
             size = 6,
-            color = "#f9d14a",) +
-  labs(x = "Comparison",
+            color = "#247BA0",) +
+  labs(x = "Sample",
        y = "log2(Fold Change)",
        fill = "Stress Granule Localization",
        title = "Stress Granule Localization",
@@ -583,7 +662,7 @@ SG_Boxplot_sig = SG_Boxplot_sig + geom_boxplot(aes(x = SG_local,
   coord_cartesian(y = c(-4,4)) +
   theme_bw()
 SG_Boxplot_sig
-ggsave("UPF1_KD_Stress_Granule_sig_boxplot.pdf",
+ggsave("ENCODE_UPF1_Stress_Granule_sig_boxplot.pdf",
        plot = SG_Boxplot_sig,
        device = pdf,
        width = 15,
