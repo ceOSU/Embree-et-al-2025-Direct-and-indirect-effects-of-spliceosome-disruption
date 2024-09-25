@@ -4155,7 +4155,7 @@ full_GL_NMD_summary = full_GL_NMD_alltrans %>% group_by(Sample,NMD) %>%
 GL_NMD_colors = NMD_GL_colors = c("NMD" = "#F27D2E",
                                   "noNMD" = "#B27092")
 GL_NMD_box = ggplot(data = full_GL_NMD_alltrans)
-GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = Sample,
+GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                                      y = log2FoldChange,
                                      fill = factor(NMD,levels = c("NMD","noNMD"))),
                                  position = position_dodge2(width = 0.9),
@@ -4167,7 +4167,7 @@ GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = Sample,
   scale_fill_manual(values = GL_NMD_colors) +
   scale_color_manual(values = GL_NMD_colors) +
   geom_text_repel(data = full_GL_NMD_summary,
-                  aes(x = Sample,
+                  aes(x = factor(Sample, levels = all_GOI),
                       y = -3,
                       color = factor(NMD,levels = c("NMD","noNMD")),
                       label = n),
@@ -4177,7 +4177,7 @@ GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = Sample,
                   direction = "y",
                   segment.color = NA) +
   geom_label(data = full_GL_NMD_summary,
-             aes(x = Sample,
+             aes(x = factor(Sample, levels = all_GOI),
                  y = med,
                  color = factor(NMD,levels = c("NMD","noNMD")),
                  label = round(med, digits = 3)),
@@ -4185,9 +4185,9 @@ GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = Sample,
              position = position_dodge2(width = 0.8),
              size = 5) +
   geom_text(data = full_GL_NMD_summary %>% filter(NMD == "NMD"),
-             aes(x = Sample,
+             aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = round(P, digits = 3)),
+                 label = signif(P, digits = 3)),
              show.legend = F,
              size = 8,
              color = "black") +
@@ -4205,9 +4205,75 @@ ggsave("Gene_level_NMD_boxplot.pdf",
        dpi = 300)
 
 #Gene level AS vs non-AS#
-AS_genes_only = AF_AS_MANE %>% select(Sample, ensembl_gene_id, AS_gene)
+AS_genes_only = AF_AS_combined %>% select(Sample, ensembl_gene_id, AS_gene) %>% group_by(Sample) %>% 
+  distinct(ensembl_gene_id,.keep_all = TRUE) %>% ungroup()
+GL_AS_combined = tibble(Sample = character())
+full_GL_AS_res = tibble(Sample = character(), P = numeric())
 for (i in all_GOI) {
   assign(paste0(i,"_GL_AS_alltrans"),
          eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
-           full_join(AS_genes_only %>% filter(Sample == i), by = c("Sample", "ENSG.ID" = "ensembl_gene_id")))
+           inner_join(AS_genes_only %>% filter(Sample == i), by = c("Sample", "ENSG.ID" = "ensembl_gene_id")))
+  GL_AS_combined = GL_AS_combined %>% full_join(eval(parse(text = paste0(i,"_GL_AS_alltrans"))))
+  assign(paste0(i,"_GL_AS_res"),
+         wilcox.test(log2FoldChange ~ AS_gene, data = eval(parse(text = paste0(i,"_GL_AS_alltrans"))),
+                     exact = FALSE, alternative = "greater")) #greater because we expect the non-spliced to be higher
+  full_GL_AS_res = full_GL_AS_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_GL_AS_res$p.value"))))
 }
+full_GL_AS_summary = GL_AS_combined %>% group_by(Sample,AS_gene) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange)) %>% 
+  left_join(full_GL_AS_res)
+
+GL_AS_box = ggplot(data = GL_AS_combined)
+GL_AS_box = GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                           y = log2FoldChange,
+                                           fill = AS_gene),
+                                       position = position_dodge2(width = 0.9),
+                                       width = 0.8,
+                                       outlier.shape = 21,
+                                       outlier.alpha = 0.5,
+                                       outlier.colour = NA,
+                                       linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS")) +
+  scale_color_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                    "TRUE" = "AS")) +
+  geom_text_repel(data = full_GL_AS_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = AS_gene,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 8,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = full_GL_AS_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = full_GL_AS_summary %>% filter(AS_gene == "TRUE"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 3,
+                label = signif(P, digits = 3)),
+            show.legend = F,
+            size = 8,
+            color = "black") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Gene Type",
+       title = "Gene level Alternate Splicing") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+GL_AS_box
+ggsave("Gene_level_AS_boxplot.pdf",
+       plot = GL_AS_box,
+       width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
