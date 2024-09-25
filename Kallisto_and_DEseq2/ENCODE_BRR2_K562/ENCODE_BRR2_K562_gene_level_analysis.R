@@ -151,41 +151,27 @@ write.csv(as.data.frame(res.sig), file = "KDvsWT_geneLevel_sig_results.csv")
 write.csv(counts(ddscounts, normalized = T), file = "KDvsWT_geneLevel_normalized_counts.csv")
 
 
-#### Creating alltrans datatables ####
-alltrans <- as.data.frame(res_counts)
-alltrans = alltrans %>% filter(!is.na(padj)) %>% 
-  rownames_to_column(var = "geneID_version")
-alltrans = alltrans %>% mutate(ENSG.ID = str_remove(geneID_version,"\\..*")) 
-
-alltransbiotype <- getBM(attributes = c("external_gene_name","ensembl_gene_id","gene_biotype"),
-                         filters = "ensembl_gene_id",
-                         values = alltrans$ENSG.ID,
-                         mart = ensembl)
-
-
-alltransbio <- left_join(alltrans,alltransbiotype, by=c("ENSG.ID" = "ensembl_gene_id")) #Check this for gene FC
-alltrans_summary = alltransbio %>% group_by(gene_biotype) %>% summarise(n = n())
-
 #### Look at different Classification of genes ####
-noNMD <- read_csv("noNMD_isoforms.csv")
-SPTC_genes <- read_csv("Stringent_PTC_geneID.csv")
+noNMD <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/spliceosomeKD_analysis/noNMD_isoforms.csv")
+SPTC_genes <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/spliceosomeKD_analysis/Stringent_PTC_geneID.csv")
 
 alltrans_NMD = alltransbio %>% mutate(NMD = case_when(ENSG.ID %in% SPTC_genes$geneID ~ "NMD",
                                                       ENSG.ID %in% noNMD$ensembl_gene_id ~ "noNMD",
-                                                      TRUE ~ NA)) %>% 
-  filter(!is.na(NMD))
+                                                      TRUE ~ NA))
+write_csv(alltrans_NMD,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SNRNP200_geneLevel_NMD_alltrans.csv")
+alltrans__NMD_filt = alltrans_NMD %>% filter(!is.na(NMD))
 
-NMD_summary = alltrans_NMD %>% group_by(NMD) %>% summarise(n = n(),
-                                                           med = median(log2FoldChange))
+NMD_summary = alltrans__NMD_filt %>% group_by(NMD) %>% summarise(n = n(),
+                                                                 med = median(log2FoldChange))
 
-NMD_res =wilcox.test(log2FoldChange ~ NMD, data = alltrans_NMD,
+NMD_res =wilcox.test(log2FoldChange ~ NMD, data = alltrans__NMD_filt,
                      exact = FALSE, alternative = "greater") #greater because we expect the NMD to be higher
 NMD_summary = NMD_summary %>% mutate(P = NMD_res$p.value)
 
 
 NMD_GL_colors = c("NMD" = "#F27D2E",
                   "noNMD" = "#B27092")
-GL_NMD_box = ggplot(data = alltrans_NMD)
+GL_NMD_box = ggplot(data = alltrans__NMD_filt)
 GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = NMD,
                                            y = log2FoldChange,
                                            fill = NMD),
@@ -234,4 +220,3 @@ ggsave("SNRNP200_geneLevel_NMD.pdf",
        height = 10,
        units = "in",
        dpi = 300)
-write_csv(alltrans_NMD,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SNRNP200_geneLevel_NMD_alltrans.csv")
