@@ -3647,8 +3647,8 @@ NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(
                                                                                 med = median(log2FoldChange))
 
 NK_colors = c("MANE" = "#713E5A",
-              "Other" = "#DD7373",
-              "Novel" = "#C5E363")
+              "Other" = "#6FC37D",
+              "Novel" = "#DD7373")
 NK_full_boxplot = ggplot(NK_full_alltrans)
 NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                                                                      y = log2FoldChange,
@@ -3714,8 +3714,8 @@ NK_PTC_summary = NK_PTC_only %>% group_by(Sample, Type) %>% summarise(n = n(),
 
 NK_PTC_colors = c("MANE" = "#663171",
                   "PTC" = "#EA7428",
-                  "Other" = "#DD7373",
-                  "novel NMD" = "#C5E363",
+                  "Other" = "#6FC37D",
+                  "novel NMD" = "#DD7373",
                   "novel stable" = "#0075A2")
 NK_PTC_boxplot = ggplot(NK_PTC_only)
 NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
@@ -4083,6 +4083,13 @@ Risdiplam_alltrans = Risdiplam_alltrans %>% left_join(Risdiplam_alltrans_annotat
 Risdiplam_MANE_PTC = Risdiplam_alltrans %>% inner_join(all_PTCgenes, by = c("ENST.ID" = "transID"))
 Ris_PTC_summary = Risdiplam_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
                                                                          med = median(log2FoldChange))
+Ris_MANE_res= wilcox.test(log2FoldChange ~ Type, data = Risdiplam_MANE_PTC %>% filter(Type != "Other"),
+                          exact = FALSE, alternative = "less") #less because we expect the PTC to be higher
+Ris_MANE_res_table = tibble(Sample = "High_vs_DMSO", P = Ris_MANE_res$p.value)
+Ris_Other_res=  wilcox.test(log2FoldChange ~ Type, data = Risdiplam_MANE_PTC %>% filter(Type != "MANE"),
+                            exact = FALSE, alternative = "less") #less because we expect the PTC to be higher
+Ris_other_res_table = tibble(Sample = "High_vs_DMSO",P = Ris_Other_res$p.value)
+
 Ris_PTC = ggplot(data = Risdiplam_MANE_PTC)
 Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
                                      y = log2FoldChange,
@@ -4113,6 +4120,18 @@ Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 7) +
+  geom_text(data = Ris_MANE_res_table,
+            aes(x = Sample,
+                y = 4,
+                label = paste0("P(MANE)","=",signif(P,digits = 3))),
+            size = 6,
+            color = "#663171") +
+  geom_text(data = Ris_other_res_table,
+            aes(x = Sample,
+                y = 3,
+                label = paste0("P(Other)","=",signif(P,digits = 3))),
+            size = 6,
+            color = "#6FC37D") +
   labs(y = "Log2(Fold Change)",
        fill = "Isoform Type",
        caption = "PTC list isoforms") +
