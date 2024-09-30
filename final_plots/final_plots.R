@@ -1236,7 +1236,7 @@ ggsave("Saltzman_PE_boxplot_main_fig.pdf",
        units = "in",
        dpi = 300)
 
-#### Make TPM plot for AS genes vs not####
+#### Make FC plot for AS genes vs not####
 Novel_splicing = read_csv("all_novel_splice_events.csv")
 AF_AS_combined = tibble(Sample = character())
 for (i in all_GOI) {
@@ -1252,7 +1252,7 @@ for (i in all_GOI) {
   
   assign(paste0(i,"_alltrans_genes"),
          getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_mane_select",
-                              "transcript_biotype"),
+                              "transcript_biotype","external_gene_name"),
                filters = "ensembl_transcript_id",
                values = eval(parse(text = paste0(i,"_full_alltrans$ENST.ID"))),
                mart = ensembl))
@@ -1862,9 +1862,9 @@ ggsave("AS_noNMD_boxplot_FC_plot.pdf",
        dpi = 300)
 
 ####Look at PTC+ transcripts that are not AS####
-PTC_list = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
-PTC_list = PTC_list %>% select(2:4)
-noAS_NMD = No_AS_only %>% inner_join(PTC_list,by = c("ENST.ID" = "transID"))
+sPTC_list = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
+sPTC_list = sPTC_list %>% select(2:4)
+noAS_NMD = No_AS_only %>% inner_join(sPTC_list,by = c("ENST.ID" = "transID"))
 noAS_NMD_sum = noAS_NMD %>% group_by(Sample,PTC) %>% 
   summarise(n = n(),
             med = median(log2FoldChange))
@@ -1936,6 +1936,215 @@ ggsave("noAS_NMD_boxplot_FC_plot.pdf",
        units = "in",
        dpi = 300)
 
+####Determine if NMD genes are AS####
+NMD_genes = c("EIF4A3","RBM8A","MAGOH","RNPS1","CASC3","ICE1","PYM1",
+              "UPF1","UPF2","UPF3B","UPF3A","ETF1","GSPT1","NCBP1","NCBP2","EIF4E","SMG1","SMG8","SMG9","DHX34","RUVBL1","RUVBL2",
+              "SMG5","SMG7","SMG6","CNOT8","DCP1A","PNRC2","DCP2","MOV10","PP2CA","PPP2R1A","XRN1","DIS3L","DIS3L2","EXOSC10","PARN",
+              "NBAS",
+              "PABPC1","EIF4G1","FMR1","EIF3E","SRSF1","SEC13","GNL2")
+NMD_AS = AF_AS_MANE %>% filter(external_gene_name %in% NMD_genes)
+NMD_AS_sum = NMD_AS %>% group_by(Sample, AS_gene) %>% summarise(n = n(),
+                                                                med = median(log2FoldChange))
+  
+NMD_AS_boxplot = ggplot(data = NMD_AS)
+NMD_AS_boxplot = NMD_AS_boxplot + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_sum,
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_sum,
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "full NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_boxplot
+ggsave("NMD_AS_boxplot.pdf",
+       device = pdf,
+       plot = NMD_AS_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+NMD_AS_boxplot_main = ggplot(data = NMD_AS %>% filter(Sample %in% Pres_KD))
+NMD_AS_boxplot_main = NMD_AS_boxplot_main + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "full NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_boxplot_main
+ggsave("NMD_AS_boxplot_mainFig.pdf",
+       device = pdf,
+       plot = NMD_AS_boxplot_main,
+       width = 22,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+filt_NMD_genes = c("EIF4A3","RBM8A","MAGOH","RNPS1","CASC3","ICE1","PYM1",
+                   "UPF1","UPF2","UPF3B","UPF3A","ETF1","GSPT1","NCBP1","NCBP2","EIF4E","SMG1","SMG8","SMG9","DHX34","RUVBL1","RUVBL2",
+                   "SMG5","SMG7","SMG6","MOV10")
+NMD_AS_filt = AF_AS_MANE %>% filter(external_gene_name %in% filt_NMD_genes)
+NMD_AS_filt_sum = NMD_AS_filt %>% group_by(Sample, AS_gene) %>% summarise(n = n(),
+                                                                med = median(log2FoldChange))
+
+NMD_AS_filt_boxplot = ggplot(data = NMD_AS_filt)
+NMD_AS_filt_boxplot = NMD_AS_filt_boxplot + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_filt_sum,
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_filt_sum,
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "core NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_filt_boxplot
+ggsave("NMD_AS_filt_boxplot.pdf",
+       device = pdf,
+       plot = NMD_AS_filt_boxplot,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+NMD_AS_filt_boxplot_main = ggplot(data = NMD_AS_filt %>% filter(Sample %in% Pres_KD))
+NMD_AS_filt_boxplot_main = NMD_AS_filt_boxplot_main + 
+  geom_boxplot(aes(x = factor(Sample,
+                              levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = AS_gene),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS genes")) +
+  geom_label(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = -2.5,
+                color = AS_gene,
+                label = n),
+            show.legend = F,
+            position = position_dodge2(width = 0.9),
+            size = 8) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type",
+       title = "NMD Genes AS",
+       caption = "core NMD factor list")+
+  coord_cartesian(y = c(-4,4))
+NMD_AS_filt_boxplot_main
+ggsave("NMD_AS_filt_boxplot_mainFig.pdf",
+       device = pdf,
+       plot = NMD_AS_filt_boxplot_main,
+       width = 22,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
 ####Analyze PRPF31 RP IPSC and RPE####
 Disease_sample = c("PRPF31_RP","PRPF8_RP")
 for (i in Disease_sample) {
@@ -1960,7 +2169,7 @@ for (i in Disease_sample) {
   all_DIS_res = all_DIS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PTC_res$p.value"))))
 }
 Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
-
+write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
 
 DIS_boxplot = ggplot(data = Disease_PTC)
 DIS_boxplot = DIS_boxplot + 
@@ -2012,6 +2221,51 @@ ggsave("Disease_boxplot_FC_plot.pdf",
        units = "in",
        dpi = 300)
 
+##Volcano plots of Disease PTC
+Disease_PTC_vol_data = Disease_PTC %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                                    log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                                    TRUE ~ "NS"))
+Disease_PTC_vol_labs = Disease_PTC_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PTC_vol_labs,"top10_sig_Disease_PTC.csv")
+
+vol_colors = c("UP" = "#F5BC00",
+               "DOWN" = "#840B2D",
+               "NS" = "#9D9C9D")
+Disease_PTC_vol = ggplot(data = Disease_PTC_vol_data)
+Disease_PTC_vol = Disease_PTC_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = Gene),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PTC gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PTC_vol
+ggsave("Disease_PTC_volcano.pdf",
+       Disease_PTC_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
 ##Look at the disease effect on PE##
 for (i in Disease_sample) {
   print(i)
@@ -2033,6 +2287,7 @@ PE_DIS_sum = PE_DIS %>% group_by(Sample,isoform) %>%
             quart = quantile(log2FoldChange, 0.5)) #calculate the summary stats for labeling the plots
 PE_DIS_sum = PE_DIS_sum %>% group_by(Sample) %>% mutate(Total = sum(n),
                                                         Total_genes = sum(genes))
+write_csv(PE_DIS,"Disease_PE_transcripts.csv")
 
 ## Calculates the P-value for each plot
 DIS_PE_res = tibble(Sample = as.character(), P = as.numeric())
@@ -2093,6 +2348,104 @@ ggsave("Disease_PE_boxplot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
+##Volcano plots of Disease PE
+Disease_PE_vol_data = PE_DIS %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                              log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                              TRUE ~ "NS"))
+Disease_PE_vol_labs = Disease_PE_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PE_vol_labs,"top10_sig_Disease_PE.csv")
+
+Disease_PE_vol = ggplot(data = Disease_PE_vol_data)
+Disease_PE_vol = Disease_PE_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PE_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = external_gene_name),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PE gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PE_vol
+ggsave("Disease_PE_volcano.pdf",
+       Disease_PE_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+#Volcano plot of all transcripts#
+Disease_all_vol_data = DIS_alltrans %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                        log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                        TRUE ~ "NS"))
+Dis_all_genes = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id","transcript_biotype",
+                                     "transcript_mane_select"),
+                      filters = "ensembl_transcript_id",
+                      values = Disease_all_vol_data$ENST.ID,
+                      mart = ensembl)
+Dis_all_genes = Dis_all_genes %>% distinct(ensembl_transcript_id, .keep_all = TRUE)
+Disease_all_vol_data = Disease_all_vol_data %>% left_join(Dis_all_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+Disease_all_vol_labs = Disease_all_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_all_vol_labs,"top10_sig_Disease_all_transcripts.csv")
+
+Disease_all_vol = ggplot(data = Disease_all_vol_data)
+Disease_all_vol = Disease_all_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                             color = "grey",
+                                             linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = Gene),
+                   show.legend = FALSE,
+                   color = "black",
+                   max.overlaps = NA) +
+  geom_label_repel(data = Disease_all_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = external_gene_name,
+                       color = Sig),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "all transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_all_vol
+ggsave("Disease_all_volcano.pdf",
+       Disease_all_vol,
+       width = 30,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
 
 ## Look at the no NMD transcripts in the disease samples##
 Dis_no_NMD = DIS_alltrans %>% inner_join(MS_noNMD_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
@@ -3083,14 +3436,14 @@ ggsave("main_fig_MANE_vs_PTC_vs_LA_noNMD.pdf",
 #### Look at MANE vs PTC vs Other genes from the same set of genes ####
 PTC_genes = getBM(attributes = "ensembl_gene_id",
                   filters = "ensembl_transcript_id",
-                  values = PTC_list$transID,
+                  values = sPTC_list$transID,
                   mart = ensembl)
 PTC_isoforms = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_biotype",
                                     "transcript_mane_select"),
                      filters = "ensembl_gene_id",
                      values = PTC_genes$ensembl_gene_id,
                      mart = ensembl)
-all_PTCgenes = PTC_list %>% 
+all_PTCgenes = sPTC_list %>% 
   full_join(PTC_isoforms,by = c("transID" = "ensembl_transcript_id")) %>% 
   mutate(Type = case_when(str_detect(transcript_mane_select,"NM") ~ "MANE",
                           PTC == "TRUE" ~ "PTC",
@@ -3266,11 +3619,15 @@ shared_AS = MAGOH_sig_AS_genes %>% inner_join(EIF4A3_sig_AS_genes) %>% inner_joi
   inner_join(PRPF3_sig_AS_genes) %>% inner_join(PRPF4_sig_AS_genes) %>% inner_join(GNB2L1_sig_AS_genes) %>%
   distinct(GeneID)
 shared_AS_annotation = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id",
-                                            "transcript_biotype"),
+                                            "transcript_biotype","cds_length"),
                              filters = "ensembl_gene_id",
                              values = shared_AS$GeneID,
                              mart = ensembl)
 Shared_AS_NMD_iso = shared_AS_annotation %>% filter(transcript_biotype == "nonsense_mediated_decay")
+genes_with_novel_isoforms <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/Combined_analysis/genes_with_novel_isoforms.csv")
+shared_AS_novel = Shared_AS_NMD_iso %>% filter(ensembl_gene_id %in% genes_with_novel_isoforms$gene_id)
+shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman_inclusion_NMD_transcripts$ensembl_transcript_id &
+                                               cds_length < 1000)
 
 ####Look at the effect of including novel isoforms in the kallisto transcriptome ####
 NK_samples = c("UPF1","EIF4A3","MAGOH","EFTUD2","AQR","SF3B1","SF3B3","CDC40")
@@ -3290,8 +3647,8 @@ NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(
                                                                                 med = median(log2FoldChange))
 
 NK_colors = c("MANE" = "#713E5A",
-              "Other" = "#DD7373",
-              "Novel" = "#C5E363")
+              "Other" = "#6FC37D",
+              "Novel" = "#DD7373")
 NK_full_boxplot = ggplot(NK_full_alltrans)
 NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                                                                      y = log2FoldChange,
@@ -3340,10 +3697,10 @@ ggsave("novel_kallisto_all_isoforms.pdf",
 #Filter to only the genes on the NMD list
 PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
                   filters = "ensembl_transcript_id",
-                  values = PTC_list$transID,
+                  values = sPTC_list$transID,
                   mart = ensembl)
 NK_PTC_only = NK_full_alltrans %>% filter(ensembl_gene_id %in% PTC_genes$ensembl_gene_id)
-NK_PTC_only = NK_PTC_only %>% left_join(PTC_list, by = c("ENST.ID" = "transID",
+NK_PTC_only = NK_PTC_only %>% left_join(sPTC_list, by = c("ENST.ID" = "transID",
                                                          "external_gene_name" = "Gene"))
 NK_PTC_only = NK_PTC_only %>% mutate(Type = case_when(Category == "MANE" ~ "MANE",
                                                       Category == "Other" & PTC.y == "TRUE" ~ "PTC",
@@ -3357,8 +3714,8 @@ NK_PTC_summary = NK_PTC_only %>% group_by(Sample, Type) %>% summarise(n = n(),
 
 NK_PTC_colors = c("MANE" = "#663171",
                   "PTC" = "#EA7428",
-                  "Other" = "#DD7373",
-                  "novel NMD" = "#C5E363",
+                  "Other" = "#6FC37D",
+                  "novel NMD" = "#DD7373",
                   "novel stable" = "#0075A2")
 NK_PTC_boxplot = ggplot(NK_PTC_only)
 NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
@@ -3463,7 +3820,7 @@ master_list = master_list %>% select(Sample,log2FoldChange,ENST.ID,baseMean,padj
 master_list = master_list %>% group_by(Sample, ENST.ID) %>% distinct(ENST.ID, .keep_all = TRUE) %>% ungroup() #removes some rows that got duplicated when making the ENST.ID column
 master_list = master_list %>% pivot_wider(names_from = Sample, values_from = c(log2FoldChange,baseMean,padj),
                                           names_vary = "slowest",values_fill = NA)
-master_list = master_list %>% left_join(PTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
+master_list = master_list %>% left_join(sPTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
   left_join(Saltzman_PE %>% select(ensembl_transcript_id,Isoform),
                                    by = c("ENST.ID" = "ensembl_transcript_id"))
 master_list = master_list %>% 
@@ -3479,7 +3836,7 @@ master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "
 write_csv(master_list,"KD_DEseq_masterlist.csv")
 
 ###Look at highly upregulated transcripts####
-upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1")
+upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1","AQR")
 for (i in upreg_test) {
   print(i)
   assign(paste0(i,"_Upregulated"),
@@ -3501,12 +3858,14 @@ set.seed(1)
 s <- list("EIF4A3" = EIF4A3_up_geneset$ENST.ID,
           "EFTUD2" = EFTUD2_up_geneset$ENST.ID,
           "CDC40" = CDC40_up_geneset$ENST.ID,
-          "SF3B1" = SF3B1_up_geneset$ENST.ID)
+          "SF3B1" = SF3B1_up_geneset$ENST.ID,
+          "AQR" = AQR_up_geneset$ENST.ID)
 ggvenn = ggVennDiagram(s,
                        label_alpha = 0.5,
                        label = "count") +
   scale_fill_moma_c("Ernst") +
-  labs(title = "Upregulated Transcripts")
+  labs(title = "Upregulated NMD Biotype Transcripts",
+       caption = "Base Mean > 100, 1.5 fold up, padj < 0.05")
 ggvenn
 ggsave("Upregulated_overlap.pdf",
        plot = ggvenn,
@@ -3515,3 +3874,439 @@ ggsave("Upregulated_overlap.pdf",
        height = 10,
        units = "in",
        dpi =300)
+
+####Make a scatter plot of KDs compared to EIF4A3 KD####
+for (i in upreg_test) {
+  print(i)
+  assign(paste0(i,"_high_mean"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(baseMean > 100 & transcript_biotype == "nonsense_mediated_decay") %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id,transcript_mane_select,
+                  transcript_biotype))
+}
+
+all_high_mean = AQR_high_mean %>% full_join(EFTUD2_high_mean) %>% 
+  full_join(CDC40_high_mean) %>% full_join(SF3B1_high_mean)
+EIF4A3_high_mean = EIF4A3_high_mean %>% rename(EIF4A3_FC = log2FoldChange) %>% select(ENST.ID,EIF4A3_FC)
+all_high_mean = all_high_mean %>% inner_join(EIF4A3_high_mean, relationship = "many-to-one")
+
+base_mean_colors = c("EFTUD2" = "#472965",
+                     "CDC40" = "#E0A500",
+                     "AQR" = "#3891A6",
+                     "SF3B1" = "#D84654")
+base_mean_scatter = ggplot(data = all_high_mean)
+base_mean_scatter = base_mean_scatter + geom_hline(yintercept = 0, color = "black") +
+  geom_vline(xintercept = 0,color = "black") +
+  geom_point(aes(x = log2FoldChange,
+                 y = EIF4A3_FC,
+                 color = Sample),
+             alpha = 0.5) +
+  geom_smooth(aes(x = log2FoldChange,
+                  y = EIF4A3_FC),
+              color = "darkgrey",
+              method = "lm") +
+  facet_wrap(vars(Sample),ncol = 2) +
+  theme_bw() +
+  labs(title = "NMD Biotype Comparison",
+       caption = "Base Mean > 100",
+       y = "EIF4A3 log2(FC)")
+base_mean_scatter
+ggsave("NMD_biotype_comparison.pdf",
+       plot = base_mean_scatter,
+       device = pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+up_mean = all_high_mean %>% filter(log2FoldChange > 0.58)
+up_mean_scatter = ggplot(data = up_mean)
+up_mean_scatter = up_mean_scatter + geom_hline(yintercept = 0, color = "black") +
+  geom_vline(xintercept = 0,color = "black") +
+  geom_point(aes(x = log2FoldChange,
+                 y = EIF4A3_FC,
+                 color = Sample),
+               alpha = 0.5) +
+  geom_smooth(aes(x = log2FoldChange,
+                  y = EIF4A3_FC),
+              color = "darkgrey",
+              method = "lm") +
+  facet_wrap(vars(Sample),ncol = 2) +
+  theme_bw() +
+  labs(title = "NMD Biotype Comparison",
+       caption = "Base Mean > 100, non-EIF4A3 FC>1.5",
+       y = "EIF4A3 log2(FC)")
+up_mean_scatter
+ggsave("NMD_biotype_comparison_upreg.pdf",
+       plot = up_mean_scatter,
+       device = pdf,
+       width = 12,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+####Pull the transcripts that are up and down in each sample ####
+full_upregulated = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_upregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(log2FoldChange > 0.58 & baseMean > 100 & padj < 0.05) %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id))
+  full_upregulated = full_upregulated %>% full_join(eval(parse(text = paste0(i,"_upregulated"))))
+}
+full_upregulated_count = full_upregulated %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_upregulated = full_upregulated_count %>% filter(count >= 10)
+shared_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_upregulated$ENST.ID,
+                     mart = ensembl)
+shared_upregulated = shared_upregulated %>% full_join(shared_genes,by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_upregulated,"upregulated_transcripts_10ormore.csv")
+
+full_downregulated = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_downregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(log2FoldChange < 0.58 & baseMean > 100 & padj < 0.05) %>% 
+           select(baseMean,log2FoldChange,padj,ENST.ID,Sample,ensembl_gene_id))
+  full_downregulated = full_downregulated %>% full_join(eval(parse(text = paste0(i,"_downregulated"))))
+}
+full_downregulated_count = full_downregulated %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_downregulated = full_downregulated_count %>% filter(count >= 10)
+shared_genes_down = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_downregulated$ENST.ID,
+                     mart = ensembl)
+shared_downregulated = shared_downregulated %>% full_join(shared_genes_down,by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_downregulated,"downregulated_transcripts_10ormore.csv")
+
+
+#Look at the PTC+ isoforms that are upregulated
+all_PTC_list = read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/ENST_PTC-EPI-TFG.txt", 
+                          delim = "\t", escape_double = FALSE, 
+                          trim_ws = TRUE)
+
+full_sPTC_up = tibble(Sample = character())
+lax_sPTC_up = tibble(Sample = character())
+full_PTC_up = tibble(Sample = character())
+for (i in all_GOI) {
+  assign(paste0(i,"_PTC_annotated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           left_join(sPTC_list, by = c("ENST.ID" = "transID")) %>% 
+           left_join(all_PTC_list, by = c("ENST.ID" = "ENST-ID"))  %>%
+           rename(sPTC = PTC,
+                  PTC_plus = "PTC-Status") %>% 
+           select("baseMean","log2FoldChange","padj","ENST.ID","Sample","ensembl_gene_id","sPTC","PTC_plus"))
+  assign(paste0(i,"_sPTC_upregulated"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(sPTC == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
+  assign(paste0(i,"_sPTC_lax_up"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(sPTC == "TRUE" & baseMean > 5 & log2FoldChange > 0.58 & padj < 0.05))
+  assign(paste0(i,"_PTC_upregulated"),
+         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
+           filter(PTC_plus == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
+  full_sPTC_up = full_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_upregulated"))))
+  lax_sPTC_up = lax_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_lax_up"))))
+  full_PTC_up = full_PTC_up %>% full_join(eval(parse(text = paste0(i,"_PTC_upregulated"))))
+}
+full_sPTC_count = full_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_sPTC_up = full_sPTC_count %>% filter(count > 5)
+shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                     filters = "ensembl_transcript_id",
+                     values = shared_sPTC_up$ENST.ID,
+                     mart = ensembl)
+shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_sPTC_up,"sPTC_upregulated.csv")
+lax_sPTC_count = lax_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_lax_up = lax_sPTC_count %>% filter(count > 5)
+shared_lax_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                         filters = "ensembl_transcript_id",
+                         values = shared_lax_up$ENST.ID,
+                         mart = ensembl)
+shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_lax_up,"lax_sPTC_upregulated.csv")
+PTC_up_count = full_PTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_PTC_up = PTC_up_count %>% filter(count > 5)
+shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                         filters = "ensembl_transcript_id",
+                         values = shared_PTC_up$ENST.ID,
+                         mart = ensembl)
+shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
+write_csv(shared_PTC_up,"sPTC_upregualted.csv")
+
+
+####Look at Spliciing Inhibitor treatment####
+Splicing_inhibitors = c("Risdiplam","Plad")
+full_SI_MANE_PTC = tibble(Sample = character())
+full_SI_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in Splicing_inhibitors) {
+  assign(paste0(i,"_alltrans"),
+         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
+  assign(paste0(i,"_alltrans_annotation"),
+         getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                              "transcript_mane_select","transcript_biotype"),
+               filters = "ensembl_transcript_id",
+               values = eval(parse(text = paste0(i,"_alltrans$ENST.ID"))),
+               mart = ensembl))
+  assign(paste0(i,"_alltrans"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           left_join(eval(parse(text = paste0(i,"_alltrans_annotation"))),
+                     by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+           mutate(Sample = i))
+  assign(paste0(i,"_MANE_PTC"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           inner_join(all_PTCgenes, by = c("ENST.ID" = "transID")))
+  full_SI_MANE_PTC = full_SI_MANE_PTC %>% full_join(eval(parse(text = paste0(i,"_MANE_PTC"))))
+  assign(paste0(i,"_other_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "MANE"),
+                     exact = FALSE, alternative = "less"))
+  assign(paste0(i,"_MANE_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "Other"),
+                     exact = FALSE, alternative = "less"))
+  full_SI_PTC_res = full_SI_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
+                                               P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
+}
+
+#Look at MANE vs PTC vs Other
+SI_PTC_summary = full_SI_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
+                                                                           med = median(log2FoldChange)) %>% 
+  left_join(full_SI_PTC_res)
+
+
+SI_PTC = ggplot(data = full_SI_MANE_PTC)
+SI_PTC = SI_PTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitors),
+                                     y = log2FoldChange,
+                                     fill = factor(Type,levels = c("MANE","PTC","Other"))),
+             position = position_dodge2(width = 0.9),
+             width = 0.8,
+             outlier.shape = 21,
+             outlier.alpha = 0.5,
+             outlier.colour = NA,
+             linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = SI_PTC_summary,
+                  aes(x = factor(Sample,levels = Splicing_inhibitors),
+                      y = -3,
+                      color = factor(Type,levels = c("MANE","PTC","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SI_PTC_summary,
+             aes(x = factor(Sample,levels = Splicing_inhibitors),
+                 y = med,
+                 color = factor(Type,levels = c("MANE","PTC","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 7) +
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 4,
+                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
+            size = 6,
+            color = "#663171") +
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 3,
+                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
+            size = 6,
+            color = "#6FC37D") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+SI_PTC
+ggsave("Splicing_Inhibitor_sPTC_boxplot.pdf",
+       plot = SI_PTC,
+       width = 22,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#### Look at the gene level DE analysis ####
+full_GL_alltrans = tibble(Sample = character())
+full_GL_NMD_alltrans = tibble(Sample = character())
+full_GL_NMD_res = tibble(Sample = character(), P = numeric())
+for (i in all_GOI) {
+  assign(paste0(i,"_GL_alltrans"),
+         read_csv(paste0(i,"_geneLevel_NMD_alltrans.csv")))
+  assign(paste0(i,"_GL_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
+           mutate(Sample = i))
+  full_GL_alltrans = full_GL_alltrans %>% full_join(eval(parse(text = paste0(i,"_GL_alltrans"))))
+  assign(paste0(i,"_GL_NMD_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
+           filter(!is.na(NMD)))
+  assign(paste0(i,"_GL_NMD_res"),
+         wilcox.test(log2FoldChange ~ NMD, data = eval(parse(text = paste0(i,"_GL_NMD_alltrans"))),
+                     exact = FALSE, alternative = "greater")) #greater because we expect the NMD to be higher
+  full_GL_NMD_res = full_GL_NMD_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_GL_NMD_res$p.value"))))
+  full_GL_NMD_alltrans = full_GL_NMD_alltrans %>% full_join(eval(parse(text = paste0(i,"_GL_NMD_alltrans"))))
+}
+full_GL_NMD_summary = full_GL_NMD_alltrans %>% group_by(Sample,NMD) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange)) %>% 
+  left_join(full_GL_NMD_res)
+
+GL_NMD_colors = NMD_GL_colors = c("NMD" = "#F27D2E",
+                                  "noNMD" = "#B27092")
+GL_NMD_box = ggplot(data = full_GL_NMD_alltrans)
+GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                     y = log2FoldChange,
+                                     fill = factor(NMD,levels = c("NMD","noNMD"))),
+                                 position = position_dodge2(width = 0.9),
+                                 width = 0.8,
+                                 outlier.shape = 21,
+                                 outlier.alpha = 0.5,
+                                 outlier.colour = NA,
+                                 linewidth = 1) +
+  scale_fill_manual(values = GL_NMD_colors) +
+  scale_color_manual(values = GL_NMD_colors) +
+  geom_text_repel(data = full_GL_NMD_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = factor(NMD,levels = c("NMD","noNMD")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 8,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = full_GL_NMD_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = factor(NMD,levels = c("NMD","noNMD")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = full_GL_NMD_summary %>% filter(NMD == "NMD"),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = 3,
+                 label = signif(P, digits = 3)),
+             show.legend = F,
+             size = 8,
+             color = "black") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Gene Type") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+GL_NMD_box
+ggsave("Gene_level_NMD_boxplot.pdf",
+       plot = GL_NMD_box,
+       width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#Gene level AS vs non-AS#
+AS_genes_only = AF_AS_combined %>% select(Sample, ensembl_gene_id, AS_gene) %>% group_by(Sample) %>% 
+  distinct(ensembl_gene_id,.keep_all = TRUE) %>% ungroup()
+GL_AS_combined = tibble(Sample = character())
+full_GL_AS_res = tibble(Sample = character(), P = numeric())
+for (i in all_GOI) {
+  assign(paste0(i,"_GL_AS_alltrans"),
+         eval(parse(text = paste0(i,"_GL_alltrans"))) %>% 
+           inner_join(AS_genes_only %>% filter(Sample == i), by = c("Sample", "ENSG.ID" = "ensembl_gene_id")))
+  GL_AS_combined = GL_AS_combined %>% full_join(eval(parse(text = paste0(i,"_GL_AS_alltrans"))))
+  assign(paste0(i,"_GL_AS_res"),
+         wilcox.test(log2FoldChange ~ AS_gene, data = eval(parse(text = paste0(i,"_GL_AS_alltrans"))),
+                     exact = FALSE, alternative = "greater")) #greater because we expect the non-spliced to be higher
+  full_GL_AS_res = full_GL_AS_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_GL_AS_res$p.value"))))
+}
+full_GL_AS_summary = GL_AS_combined %>% group_by(Sample,AS_gene) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange)) %>% 
+  left_join(full_GL_AS_res)
+
+GL_AS_box = ggplot(data = GL_AS_combined)
+GL_AS_box = GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                           y = log2FoldChange,
+                                           fill = AS_gene),
+                                       position = position_dodge2(width = 0.9),
+                                       width = 0.8,
+                                       outlier.shape = 21,
+                                       outlier.alpha = 0.5,
+                                       outlier.colour = NA,
+                                       linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS")) +
+  scale_color_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                    "TRUE" = "AS")) +
+  geom_text_repel(data = full_GL_AS_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = AS_gene,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 8,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = full_GL_AS_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = full_GL_AS_summary %>% filter(AS_gene == "TRUE"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 3,
+                label = signif(P, digits = 3)),
+            show.legend = F,
+            size = 8,
+            color = "black") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Gene Type",
+       title = "Gene level Alternate Splicing") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+GL_AS_box
+ggsave("Gene_level_AS_boxplot.pdf",
+       plot = GL_AS_box,
+       width = 40,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
