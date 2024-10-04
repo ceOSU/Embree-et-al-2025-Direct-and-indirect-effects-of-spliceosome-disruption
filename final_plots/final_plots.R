@@ -48,7 +48,7 @@ all_GOI = c("UPF1","EIF4A3","MAGOH",
             "PRPF3","PRPF4",
             "GNB2L1",
             "SNRNP70","SNRPC")
-Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","SNRPC","SNRNP70")
+Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","CDC40","SNRPC","SNRNP70")
 
 #Set up biomart
 listMarts()
@@ -4066,32 +4066,46 @@ shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" =
 write_csv(shared_PTC_up,"sPTC_upregualted.csv")
 
 
-####Look at Risdiplam treatment####
-Risdiplam_alltrans <- read_csv("Risdiplam_DBfilt_alltrans.csv")
-View(Risdiplam_alltrans)
-
-Risdiplam_alltrans_annotation = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
-                                                     "transcript_mane_select","transcript_biotype"),
-                                      filters = "ensembl_transcript_id",
-                                      values = Risdiplam_alltrans$ENST.ID,
-                                      mart = ensembl)
-Risdiplam_alltrans = Risdiplam_alltrans %>% left_join(Risdiplam_alltrans_annotation,
-                                                      by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
-  mutate(Sample = "High_vs_DMSO")
+####Look at Spliciing Inhibitor treatment####
+Splicing_inhibitors = c("Risdiplam","Plad")
+full_SI_MANE_PTC = tibble(Sample = character())
+full_SI_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in Splicing_inhibitors) {
+  assign(paste0(i,"_alltrans"),
+         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
+  assign(paste0(i,"_alltrans_annotation"),
+         getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                              "transcript_mane_select","transcript_biotype"),
+               filters = "ensembl_transcript_id",
+               values = eval(parse(text = paste0(i,"_alltrans$ENST.ID"))),
+               mart = ensembl))
+  assign(paste0(i,"_alltrans"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           left_join(eval(parse(text = paste0(i,"_alltrans_annotation"))),
+                     by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+           mutate(Sample = i))
+  assign(paste0(i,"_MANE_PTC"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           inner_join(all_PTCgenes, by = c("ENST.ID" = "transID")))
+  full_SI_MANE_PTC = full_SI_MANE_PTC %>% full_join(eval(parse(text = paste0(i,"_MANE_PTC"))))
+  assign(paste0(i,"_other_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "MANE"),
+                     exact = FALSE, alternative = "less"))
+  assign(paste0(i,"_MANE_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "Other"),
+                     exact = FALSE, alternative = "less"))
+  full_SI_PTC_res = full_SI_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
+                                               P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
+}
 
 #Look at MANE vs PTC vs Other
-Risdiplam_MANE_PTC = Risdiplam_alltrans %>% inner_join(all_PTCgenes, by = c("ENST.ID" = "transID"))
-Ris_PTC_summary = Risdiplam_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
-                                                                         med = median(log2FoldChange))
-Ris_MANE_res= wilcox.test(log2FoldChange ~ Type, data = Risdiplam_MANE_PTC %>% filter(Type != "Other"),
-                          exact = FALSE, alternative = "less") #less because we expect the PTC to be higher
-Ris_MANE_res_table = tibble(Sample = "High_vs_DMSO", P = Ris_MANE_res$p.value)
-Ris_Other_res=  wilcox.test(log2FoldChange ~ Type, data = Risdiplam_MANE_PTC %>% filter(Type != "MANE"),
-                            exact = FALSE, alternative = "less") #less because we expect the PTC to be higher
-Ris_other_res_table = tibble(Sample = "High_vs_DMSO",P = Ris_Other_res$p.value)
+SI_PTC_summary = full_SI_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
+                                                                           med = median(log2FoldChange)) %>% 
+  left_join(full_SI_PTC_res)
 
-Ris_PTC = ggplot(data = Risdiplam_MANE_PTC)
-Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
+
+SI_PTC = ggplot(data = full_SI_MANE_PTC)
+SI_PTC = SI_PTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitors),
                                      y = log2FoldChange,
                                      fill = factor(Type,levels = c("MANE","PTC","Other"))),
              position = position_dodge2(width = 0.9),
@@ -4102,8 +4116,8 @@ Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
              linewidth = 1) +
   scale_fill_manual(values = all_PTC_colors) +
   scale_color_manual(values = all_PTC_colors) +
-  geom_text_repel(data = Ris_PTC_summary,
-                  aes(x = Sample,
+  geom_text_repel(data = SI_PTC_summary,
+                  aes(x = factor(Sample,levels = Splicing_inhibitors),
                       y = -3,
                       color = factor(Type,levels = c("MANE","PTC","Other")),
                       label = n),
@@ -4112,24 +4126,24 @@ Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
                   size = 7,
                   direction = "y",
                   segment.color = NA) +
-  geom_label(data = Ris_PTC_summary,
-             aes(x = Sample,
+  geom_label(data = SI_PTC_summary,
+             aes(x = factor(Sample,levels = Splicing_inhibitors),
                  y = med,
                  color = factor(Type,levels = c("MANE","PTC","Other")),
                  label = round(med, digits = 3)),
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 7) +
-  geom_text(data = Ris_MANE_res_table,
-            aes(x = Sample,
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 4,
-                label = paste0("P(MANE)","=",signif(P,digits = 3))),
+                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
             size = 6,
             color = "#663171") +
-  geom_text(data = Ris_other_res_table,
-            aes(x = Sample,
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 3,
-                label = paste0("P(Other)","=",signif(P,digits = 3))),
+                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
             size = 6,
             color = "#6FC37D") +
   labs(y = "Log2(Fold Change)",
@@ -4137,10 +4151,10 @@ Ris_PTC = Ris_PTC + geom_boxplot(aes(x = Sample,
        caption = "PTC list isoforms") +
   coord_cartesian(ylim = c(-4,4)) +
   theme_bw()
-Ris_PTC
-ggsave("Risdiplam_sPTC_boxplot.pdf",
-       plot = Ris_PTC,
-       width = 20,
+SI_PTC
+ggsave("Splicing_Inhibitor_sPTC_boxplot.pdf",
+       plot = SI_PTC,
+       width = 22,
        height = 10,
        units = "in",
        device = pdf,
