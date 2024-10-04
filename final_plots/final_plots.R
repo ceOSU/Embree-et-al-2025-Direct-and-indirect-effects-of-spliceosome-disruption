@@ -48,7 +48,7 @@ all_GOI = c("UPF1","EIF4A3","MAGOH",
             "PRPF3","PRPF4",
             "GNB2L1",
             "SNRNP70","SNRPC")
-Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","SNRPC","SNRNP70")
+Pres_KD = c("UPF1","EIF4A3","MAGOH","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3","CDC40","SNRPC","SNRNP70")
 
 #Set up biomart
 listMarts()
