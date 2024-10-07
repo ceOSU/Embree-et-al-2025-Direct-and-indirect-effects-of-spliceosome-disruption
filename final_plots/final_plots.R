@@ -91,8 +91,8 @@ ggsave("WTfilt_Log2FC_freq.pdf",
 #Import the double filter dataset
 for (i in all_GOI) {
   print(i)
-  assign(paste0(i,"_DBfilt"), read_csv(paste0(i,"_DBfilt_alltrans.csv")))
-  assign(paste0(i,"_DBfilt"), eval(parse(text = paste0(i,"_DBfilt"))) %>% mutate(Sample = paste0(i)))
+  assign(paste0(i,"_full_alltrans"), read_csv(paste0(i,"_DBfilt_alltrans.csv")))
+  assign(paste0(i,"_full_alltrans"), eval(parse(text = paste0(i,"_DBfilt"))) %>% mutate(Sample = paste0(i)))
 }
 DBfilt_combined = UPF1_DBfilt %>% full_join(AGO1_DBfilt) %>% full_join(AQR_DBfilt) %>% full_join(SF3B3_DBfilt) %>% 
   full_join(EIF4A3_DBfilt)
@@ -121,23 +121,24 @@ ggsave("DBfilt_Log2FC_freq.pdf",
        dpi = 300)
 
 
+
 #### Look at the Log2FC of PTC+- gene list####
 for (i in all_GOI) {
   print(i)
   assign(paste0(i,"_PTC_alltrans"), read_csv(paste0(i,"_PTC_alltrans.csv")))
   assign(paste0(i,"_PTC_alltrans"), eval(parse(text = paste0(i,"_PTC_alltrans"))) %>% mutate(Sample = paste0(i)) %>% 
            dplyr::select(2:8,10:12)) 
-  assign(paste0(i,"_DBfilt_sig"), eval(parse(text = paste0(i,"_DBfilt"))) %>% mutate(Sample = paste0(i)) %>% 
-           filter(padj <= 0.01))
+  assign(paste0(i,"_full_alltrans_sig"), eval(parse(text = paste0(i,"_full_alltrans"))) %>% mutate(Sample = paste0(i)) %>% 
+           filter(padj <= 0.05))
 }
 
-sig_combined = MAGOH_DBfilt_sig %>% full_join(EIF4A3_DBfilt_sig) %>% full_join(UPF1_DBfilt_sig) %>% 
-  full_join(RBM22_DBfilt_sig) %>% full_join(AQR_DBfilt_sig) %>% full_join(SNRNP200_DBfilt_sig) %>% 
-  full_join(EFTUD2_DBfilt_sig) %>% full_join(SF3B1_DBfilt_sig) %>% full_join(SF3B3_DBfilt_sig) %>% 
-  full_join(SNRPC_DBfilt_sig) %>% full_join(SNRNP70_DBfilt_sig) %>% full_join(PRPF8_DBfilt_sig) %>%
-  full_join(PRPF6_DBfilt_sig) %>% full_join(CDC5L_DBfilt_sig) %>% full_join(SF3A1_DBfilt_sig) %>% 
-  full_join(SF3A3_DBfilt_sig) %>% full_join(U2AF1_DBfilt_sig) %>% full_join(CDC40_DBfilt_sig) %>% 
-  full_join(PRPF3_DBfilt_sig) %>% full_join(PRPF4_DBfilt_sig) %>% full_join(GNB2L1_DBfilt_sig) %>% 
+sig_combined = MAGOH_full_alltrans_sig %>% full_join(EIF4A3_full_alltrans_sig) %>% full_join(UPF1_full_alltrans_sig) %>% 
+  full_join(RBM22_full_alltrans_sig) %>% full_join(AQR_full_alltrans_sig) %>% full_join(SNRNP200_full_alltrans_sig) %>% 
+  full_join(EFTUD2_full_alltrans_sig) %>% full_join(SF3B1_full_alltrans_sig) %>% full_join(SF3B3_full_alltrans_sig) %>% 
+  full_join(SNRPC_full_alltrans_sig) %>% full_join(SNRNP70_full_alltrans_sig) %>% full_join(PRPF8_full_alltrans_sig) %>%
+  full_join(PRPF6_full_alltrans_sig) %>% full_join(CDC5L_full_alltrans_sig) %>% full_join(SF3A1_full_alltrans_sig) %>% 
+  full_join(SF3A3_full_alltrans_sig) %>% full_join(U2AF1_full_alltrans_sig) %>% full_join(CDC40_full_alltrans_sig) %>% 
+  full_join(PRPF3_full_alltrans_sig) %>% full_join(PRPF4_full_alltrans_sig) %>% full_join(GNB2L1_full_alltrans_sig) %>% 
   mutate(Type = "Sig")
 PTC_combined = MAGOH_PTC_alltrans %>% full_join(EIF4A3_PTC_alltrans) %>% full_join(UPF1_PTC_alltrans) %>% 
   full_join(RBM22_PTC_alltrans) %>% full_join(AQR_PTC_alltrans) %>% full_join(SNRNP200_PTC_alltrans) %>% 
@@ -346,8 +347,9 @@ ggsave("PTC_heatmap_largeP.pdf",
        dpi = 300)
 
 
-####Look at PTC+- vs No NMD####
-#import and manipulate data (Manu's no NMD gene list"#)
+
+
+#import and manipulate data (Manu's no NMD gene list")####
 noNMD_transcripts <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/noNMD_isoforms.csv")
 all_noNMD = tibble(baseMean = as.numeric())
 for (i in all_GOI) {
@@ -390,12 +392,12 @@ noNMD_boxplot = noNMD_boxplot +
                linewidth = 1)+
   scale_fill_manual(values = noNMD_colors) +
   scale_color_manual(values = noNMD_colors)+
-  geom_label(data = noNMD_sum,
+  geom_text(data = noNMD_sum %>% filter(isoform == "MANE"),
              aes(x = Sample,
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black")+
   geom_label(data = noNMD_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
@@ -404,15 +406,16 @@ noNMD_boxplot = noNMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = noNMD_sum,
+  geom_text_repel(data = noNMD_sum,
              aes(x = factor(Sample, levels = all_GOI),
-                 y = -3.5,
+                 y = -3,
                  color = isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -420,7 +423,7 @@ noNMD_boxplot = noNMD_boxplot +
        title = "No NMD biotype")+
   coord_cartesian(y = c(-4,4))
 noNMD_boxplot
-# Last saved and modified on 5/10/2024
+# Last saved and modified on 10/7/2024
 ggsave("noNMD_boxplot_FC.pdf",
        device = pdf,
        plot = noNMD_boxplot,
@@ -442,12 +445,12 @@ mainFig_noNMD_boxplot = mainFig_noNMD_boxplot +
                linewidth = 1)+
   scale_fill_manual(values = noNMD_colors) +
   scale_color_manual(values = noNMD_colors)+
-  geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
+  geom_text(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
              aes(x = Sample,
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black")+
   geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
@@ -456,15 +459,16 @@ mainFig_noNMD_boxplot = mainFig_noNMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = noNMD_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
-                 y = -3.5,
+                 y = -3,
                  color = isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -472,11 +476,11 @@ mainFig_noNMD_boxplot = mainFig_noNMD_boxplot +
        title = "No NMD biotype")+
   coord_cartesian(y = c(-4,4))
 mainFig_noNMD_boxplot
-# Last saved and modified on 7/5/2024
+# Last saved and modified on 10/7/2024
 ggsave("mainFig_noNMD_boxplot_FC.pdf",
        device = pdf,
        plot = mainFig_noNMD_boxplot,
-       width = 20,
+       width = 22,
        height = 10,
        units = "in",
        dpi = 300)
@@ -529,8 +533,7 @@ MSnoNMD_boxplot = MSnoNMD_boxplot +
              aes(x = Sample,
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7)+
   geom_label(data = MSnoNMD_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
@@ -539,15 +542,16 @@ MSnoNMD_boxplot = MSnoNMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = MSnoNMD_sum,
+  geom_text_repel(data = MSnoNMD_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = -3.5,
                  color = isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -555,7 +559,7 @@ MSnoNMD_boxplot = MSnoNMD_boxplot +
        title = "MS full list")+
   coord_cartesian(y = c(-4,4))
 MSnoNMD_boxplot
-# Last saved and modified on 6/7/2024
+# Last saved and modified on 10/7/2024
 ggsave("MSnoNMD_boxplot_FC.pdf",
        device = pdf,
        plot = MSnoNMD_boxplot,
@@ -564,7 +568,8 @@ ggsave("MSnoNMD_boxplot_FC.pdf",
        units = "in",
        dpi = 300)
 
-##Look at the non-NMD transcripts from the Lykke-Anderson genes and development paper
+
+##Look at the non-NMD transcripts from the Lykke-Anderson genes and development paper####
 LA_nonNMD = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Lykke_non_NMD.csv") #244 isoforms, 132 genes
 LA_nonNMD_MANE = LA_nonNMD_MANE %>% 
   mutate(isoform = if_else(str_detect(transcript_mane_select,"NM"),
@@ -651,6 +656,7 @@ ggsave("LAnoNMD_boxplot_FC.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 
 #### Make side by side TPM box plot ####
@@ -764,21 +770,22 @@ TPM_summary_colors = c("MANE" = "#663171",
                        "PTC" = "#ea7428")
 total_TPM_PTC = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd") %>%
                                filter(Type == "MANE" | Type == "PTC"))
-total_TPM_PTC = total_TPM_PTC + geom_point(aes(x = factor(Sample, levels = all_GOI),
-                                                 y = total,
-                                                 color = Type),
-                                             size = 3) +
-  scale_color_manual(values = TPM_summary_colors) +
+total_TPM_PTC = total_TPM_PTC + geom_col(aes(x = factor(Sample, levels = all_GOI),
+                                             y = total,
+                                             fill = Type),
+                                         position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors) +
   labs(x = "Depletion",
        y = "Total TPM",
        title = "Annotated isoforms",
-       color = "Isoform") +
+       fill = "Isoform") +
   theme_bw() + 
-  theme(axis.text.x = element_text(angle = 30, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, hjust=1))+
+  coord_cartesian(ylim = c(0,4000))
 total_TPM_PTC
 ggsave("total_TPM_annotated.pdf",
        plot = total_TPM_PTC,
-       width = 12,
+       width = 16,
        height = 10,
        units = "in",
        device = pdf,
@@ -786,21 +793,24 @@ ggsave("total_TPM_annotated.pdf",
 
 total_TPM_novel = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd") %>%
                          filter(Type == "Novel_NMD" | Type == "Novel_Stable"))
-total_TPM_novel = total_TPM_novel + geom_point(aes(x = factor(Sample, levels = all_GOI),
+total_TPM_novel = total_TPM_novel + geom_col(aes(x = factor(Sample, levels = all_GOI),
                                                y = total,
-                                               color = Type),
-                                           size = 3) +
-  scale_color_manual(values = TPM_summary_colors) +
+                                               fill = factor(Type, levels = c("Novel_Stable","Novel_NMD"))),
+                                             position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors, labels = c("Novel_NMD" = "Novel NMD",
+                                                             "Novel_Stable" = "Novel Stable"),
+                    breaks = c("Novel_Stable","Novel_NMD")) +
   labs(x = "Depletion",
        y = "Total TPM",
        title = "Novel Isoforms",
-       color = "Isoform") +
+       fill = "Isoform") +
   theme_bw() + 
-  theme(axis.text.x = element_text(angle = 30, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  coord_cartesian(ylim = c(0,4000))
 total_TPM_novel
 ggsave("total_TPM_novel.pdf",
        plot = total_TPM_novel,
-       width = 12,
+       width = 16,
        height = 10,
        units = "in",
        device = pdf,
@@ -894,21 +904,22 @@ ggsave("main_fig_SBS_TPM.pdf",
 
 main_fig_total_TPM_PTC = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd" & Sample %in% Pres_KD) %>%
                          filter(Type == "MANE" | Type == "PTC"))
-main_fig_total_TPM_PTC = main_fig_total_TPM_PTC + geom_point(aes(x = factor(Sample, levels = all_GOI),
-                                               y = total,
-                                               color = Type),
-                                           size = 3) +
-  scale_color_manual(values = TPM_summary_colors) +
+main_fig_total_TPM_PTC = main_fig_total_TPM_PTC + geom_col(aes(x = factor(Sample, levels = all_GOI),
+                                                               y = total,
+                                                               fill = factor(Type,levels = c("MANE","PTC"))),
+                                                           position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors) +
   labs(x = "Depletion",
        y = "Total TPM",
        title = "Annotated isoforms",
-       color = "Isoform") +
+       fill = "Isoform") +
   theme_bw() + 
-  theme(axis.text.x = element_text(angle = 30, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  coord_cartesian(ylim = c(0,4000))
 main_fig_total_TPM_PTC
 ggsave("main_fig_total_TPM_annotated.pdf",
        plot = main_fig_total_TPM_PTC,
-       width = 8,
+       width = 10,
        height = 10,
        units = "in",
        device = pdf,
@@ -916,17 +927,19 @@ ggsave("main_fig_total_TPM_annotated.pdf",
 
 main_fig_total_TPM_novel = ggplot(data = all_TPM_summary %>% filter(Treatment == "kd" & Sample %in% Pres_KD) %>%
                            filter(Type == "Novel_NMD" | Type == "Novel_Stable"))
-main_fig_total_TPM_novel = main_fig_total_TPM_novel + geom_point(aes(x = factor(Sample, levels = all_GOI),
-                                                   y = total,
-                                                   color = Type),
-                                               size = 3) +
-  scale_color_manual(values = TPM_summary_colors) +
+main_fig_total_TPM_novel = main_fig_total_TPM_novel + geom_col(aes(x = factor(Sample, levels = all_GOI),
+                                                                   y = total,
+                                                                   fill = factor(Type,levels = c("Novel_Stable","Novel_NMD"))),
+                                                               position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors, labels = c("Novel_NMD" = "Novel NMD",
+                                                            "Novel_Stable" = "Novel Stable")) +
   labs(x = "Depletion",
        y = "Total TPM",
        title = "Novel Isoforms",
-       color = "Isoform") +
+       fill = "Isoform") +
   theme_bw() + 
-  theme(axis.text.x = element_text(angle = 30, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  coord_cartesian(ylim = c(0,4000))
 main_fig_total_TPM_novel
 ggsave("main_fig_total_TPM_novel.pdf",
        plot = main_fig_total_TPM_novel,
@@ -949,23 +962,13 @@ ggsave("main_fig_total_TPM_SBS.pdf",
        units = "in",
        dpi = 300)
 
+
 #### Look at FC of PE NMD isoforms ####
+#Combines all tables
+MF_alltrans = tibble(Sample = character())
 for (i in all_GOI) {
-  print(i)
-  assign(paste0(i,"_full_alltrans"),
-         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
-  assign(paste0(i,"_full_alltrans"),
-         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
-           mutate(Sample = i))
-} 
-#loads all of the log2 FC samples, filtered for TPM > 1 in both WT and KD
-MF_alltrans = MAGOH_full_alltrans %>% full_join(EIF4A3_full_alltrans) %>% full_join(UPF1_full_alltrans) %>% 
-  full_join(RBM22_full_alltrans) %>% full_join(AQR_full_alltrans) %>% full_join(SNRNP200_full_alltrans) %>% 
-  full_join(EFTUD2_full_alltrans) %>% full_join(SF3B1_full_alltrans) %>% full_join(SF3B3_full_alltrans) %>% 
-  full_join(SNRPC_full_alltrans) %>% full_join(SNRNP70_full_alltrans) %>% full_join(PRPF8_full_alltrans) %>% 
-  full_join(PRPF6_full_alltrans) %>% full_join(CDC5L_full_alltrans) %>% full_join(SF3A1_full_alltrans) %>% 
-  full_join(SF3A3_full_alltrans) %>% full_join(U2AF1_full_alltrans) %>% full_join(CDC40_full_alltrans) %>% 
-  full_join(PRPF3_full_alltrans) %>% full_join(PRPF4_full_alltrans) %>% full_join(GNB2L1_full_alltrans)#Combines all tables
+  MF_alltrans = MF_alltrans %>% full_join(eval(parse(text = paste0(i,"_full_alltrans"))))
+}
 write_csv(MF_alltrans, file = "comined_non_disease_alltrans.csv")
 
 ## Load PE data
@@ -1014,12 +1017,13 @@ PE_boxplot = PE_boxplot +
                linewidth = 1) +
   scale_fill_manual(values = PE_Colors) +
   scale_color_manual(values = PE_Colors)+
-  geom_label(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
+  geom_text(data = PE_pres_sum %>% filter(Sample %in% Pres_KD & isoform == "NMD"),
              aes(x = factor(Sample, levels = Pres_KD),
                  y = 3,
                  label = paste0("p = ",signif(P,digits = 3))),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black",
+            show.legend = F)+
   geom_label(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = Pres_KD),
                  y = Med,
@@ -1028,15 +1032,16 @@ PE_boxplot = PE_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample, levels = Pres_KD),
-                 y = -3,
-                 color = isoform,
-                 label = paste0("n =",n)),
+  geom_text_repel(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample, levels = Pres_KD),
+                      y = -3,
+                      color = isoform,
+                      label = paste0("n =",n)),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1064,12 +1069,12 @@ full_PE_boxplot = full_PE_boxplot +
                linewidth = 1) +
   scale_fill_manual(values = PE_Colors) +
   scale_color_manual(values = PE_Colors)+
-  geom_label(data = PE_FC_sum,
+  geom_text(data = PE_FC_sum %>% filter(isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = paste0("p = ",signif(P,digits = 3))),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black")+
   geom_label(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
              aes(x = factor(Sample, levels = all_GOI),
                  y = Med,
@@ -1078,15 +1083,16 @@ full_PE_boxplot = full_PE_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
+  geom_text_repel(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
              aes(x = factor(Sample, levels = all_GOI),
                  y = -3,
                  color = isoform,
                  label = paste0("n =",n)),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1152,12 +1158,13 @@ Saltzman_PE_boxplot = Saltzman_PE_boxplot +
                linewidth = 1) +
   scale_fill_manual(values = PE_Colors) +
   scale_color_manual(values = PE_Colors)+
-  geom_label(data = Saltzman_alltrans_sum,
+  geom_text(data = Saltzman_alltrans_sum %>% filter(Isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = Saltzman_alltrans_sum %>% filter(Sample %in% all_GOI),
              aes(x = factor(Sample, levels = all_GOI),
                  y = Med,
@@ -1166,15 +1173,16 @@ Saltzman_PE_boxplot = Saltzman_PE_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = Saltzman_alltrans_sum %>% filter(Sample %in% all_GOI),
+  geom_text_repel(data = Saltzman_alltrans_sum %>% filter(Sample %in% all_GOI),
              aes(x = factor(Sample, levels = all_GOI),
                  y = -3,
                  color = Isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1202,12 +1210,13 @@ Saltzman_PE_boxplot_short = Saltzman_PE_boxplot_short +
                linewidth = 1) +
   scale_fill_manual(values = PE_Colors) +
   scale_color_manual(values = PE_Colors)+
-  geom_label(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
+  geom_text(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
                  y = Med,
@@ -1216,15 +1225,16 @@ Saltzman_PE_boxplot_short = Saltzman_PE_boxplot_short +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
                  y = -3,
                  color = Isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1238,6 +1248,7 @@ ggsave("Saltzman_PE_boxplot_main_fig.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 #### Make FC plot for AS genes vs not####
 Novel_splicing = read_csv("all_novel_splice_events.csv")
@@ -1305,11 +1316,13 @@ AS_boxplot = AS_boxplot +
   scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
                                                    "TRUE" = "AS genes")) +
   geom_text(data = AS_MANE_sum %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = 3,
-                 label = signif(P,digits = 3)),
-             size = 8)+
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = 3,
+                label = signif(P,digits = 3)),
+             size = 7,
+            show.legend = F,
+            color = "black")+
   geom_label(data = AS_MANE_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1319,15 +1332,17 @@ AS_boxplot = AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = AS_MANE_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = AS_MANE_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
-                 y = -2.5,
+                 y = -3,
                  color = AS_gene,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 8) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1357,12 +1372,13 @@ full_AS_boxplot = full_AS_boxplot +
   scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
                                                    "TRUE" = "AS genes")) +
   geom_text(data = AS_MANE_sum,
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = 3,
-                 label = signif(P,digits = 3)),
-             size = 8,
-             alpha = 0.75)+
+            aes(x = factor(Sample,
+                           levels = all_GOI),
+                y = 3,
+                label = signif(P,digits = 3)),
+            size = 7,
+            color = "black",
+            show.legend = F)+
   geom_label(data = AS_MANE_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1372,16 +1388,17 @@ full_AS_boxplot = full_AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = AS_MANE_sum,
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = -2.5,
-                 color = AS_gene,
-                 label = n),
-             show.legend = F,
-             position = position_dodge2(width = 0.9),
-             size = 8,
-             alpha = 0.75) +
+  geom_text_repel(data = AS_MANE_sum,
+                  aes(x = factor(Sample,
+                                 levels = all_GOI),
+                      y = -3,
+                      color = AS_gene,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1453,8 +1470,9 @@ no_AS_boxplot = no_AS_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = no_AS_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1464,16 +1482,17 @@ no_AS_boxplot = no_AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = no_AS_sum,
+  geom_text_repel(data = no_AS_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
-                 y = -2.5,
+                 y = -3,
                  color = Isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1488,6 +1507,7 @@ ggsave("no_AS_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 no_AS_main_boxplot = ggplot(data = No_AS_only %>% filter(Sample %in% Pres_KD))
 no_AS_main_boxplot = no_AS_main_boxplot + 
   geom_boxplot(aes(x = factor(Sample,
@@ -1507,8 +1527,9 @@ no_AS_main_boxplot = no_AS_main_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = no_AS_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1518,16 +1539,17 @@ no_AS_main_boxplot = no_AS_main_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = no_AS_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = no_AS_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
-                 y = -2.5,
+                 y = -3,
                  color = Isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1562,8 +1584,9 @@ only_AS_boxplot = only_AS_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = AS_only_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1573,16 +1596,17 @@ only_AS_boxplot = only_AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = AS_only_sum,
+  geom_text_repel(data = AS_only_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
-                 y = -2.5,
+                 y = -3,
                  color = Isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1597,6 +1621,7 @@ ggsave("only_AS_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 only_AS_main_boxplot = ggplot(data = AS_only %>% filter(Sample %in% Pres_KD))
 only_AS_main_boxplot = only_AS_main_boxplot + 
   geom_boxplot(aes(x = factor(Sample,
@@ -1616,8 +1641,9 @@ only_AS_main_boxplot = only_AS_main_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = AS_only_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1627,7 +1653,7 @@ only_AS_main_boxplot = only_AS_main_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = AS_only_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = AS_only_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = -2.5,
@@ -1635,8 +1661,9 @@ only_AS_main_boxplot = only_AS_main_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1651,6 +1678,7 @@ ggsave("only_AS_main_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Compare no-AS genes to no-NMD genes####
 MS_noNMD_genes = MS_noNMD_transcripts %>% distinct(ensembl_gene_id)
@@ -1696,8 +1724,9 @@ noAS_noNMD_boxplot = noAS_noNMD_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = noAS_noNMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1707,7 +1736,7 @@ noAS_noNMD_boxplot = noAS_noNMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = noAS_noNMD_sum,
+  geom_text_repel(data = noAS_noNMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = -2.5,
@@ -1715,8 +1744,9 @@ noAS_noNMD_boxplot = noAS_noNMD_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1731,6 +1761,7 @@ ggsave("noAS_noNMD_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 noAS_noNMD_main_boxplot = ggplot(data = all_noAS_noNMD %>% filter(Sample %in% Pres_KD))
 noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot + 
   geom_boxplot(aes(x = factor(Sample,
@@ -1750,8 +1781,9 @@ noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = noAS_noNMD_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1761,7 +1793,7 @@ noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = noAS_noNMD_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = noAS_noNMD_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = -2.5,
@@ -1769,8 +1801,9 @@ noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1785,6 +1818,7 @@ ggsave("noAS_noNMD_main_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 #Compare AS noNMD datasets
 all_AS_noNMD = tibble(Sample = character())
 for (i in all_GOI) {
@@ -1828,8 +1862,9 @@ AS_noNMD_boxplot = AS_noNMD_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+             color = "black")+
   geom_label(data = AS_noNMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1839,7 +1874,7 @@ AS_noNMD_boxplot = AS_noNMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = AS_noNMD_sum,
+  geom_label_repel(data = AS_noNMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = -2.5,
@@ -1847,8 +1882,9 @@ AS_noNMD_boxplot = AS_noNMD_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1863,6 +1899,7 @@ ggsave("AS_noNMD_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Look at PTC+ transcripts that are not AS####
 sPTC_list = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/Stringent_PTC_MANE_CE.csv")
@@ -1903,8 +1940,9 @@ noAS_NMD_boxplot = noAS_NMD_boxplot +
                             levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             show.legend = F,
+            color = "black") +
   geom_label(data = noAS_NMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
@@ -1914,7 +1952,7 @@ noAS_NMD_boxplot = noAS_NMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = noAS_NMD_sum,
+  geom_text_repel(data = noAS_NMD_sum,
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = -2.5,
@@ -1922,8 +1960,9 @@ noAS_NMD_boxplot = noAS_NMD_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -1938,6 +1977,7 @@ ggsave("noAS_NMD_boxplot_FC_plot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Determine if NMD genes are AS####
 NMD_genes = c("EIF4A3","RBM8A","MAGOH","RNPS1","CASC3","ICE1","PYM1",
@@ -1972,15 +2012,17 @@ NMD_AS_boxplot = NMD_AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = NMD_AS_sum,
+  geom_text_repel(data = NMD_AS_sum,
             aes(x = factor(Sample,
                            levels = all_GOI),
-                y = -2.5,
+                y = -3,
                 color = AS_gene,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2020,7 +2062,7 @@ NMD_AS_boxplot_main = NMD_AS_boxplot_main +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = NMD_AS_sum %>% filter(Sample %in% Pres_KD),
             aes(x = factor(Sample,
                            levels = all_GOI),
                 y = -2.5,
@@ -2028,7 +2070,9 @@ NMD_AS_boxplot_main = NMD_AS_boxplot_main +
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2075,15 +2119,17 @@ NMD_AS_filt_boxplot = NMD_AS_filt_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = NMD_AS_filt_sum,
+  geom_text_repel(data = NMD_AS_filt_sum,
             aes(x = factor(Sample,
                            levels = all_GOI),
-                y = -2.5,
+                y = -3,
                 color = AS_gene,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2123,15 +2169,17 @@ NMD_AS_filt_boxplot_main = NMD_AS_filt_boxplot_main +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
+  geom_text_repel(data = NMD_AS_filt_sum %>% filter(Sample %in% Pres_KD),
             aes(x = factor(Sample,
                            levels = all_GOI),
-                y = -2.5,
+                y = -3,
                 color = AS_gene,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2147,6 +2195,7 @@ ggsave("NMD_AS_filt_boxplot_mainFig.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Analyze PRPF31 RP IPSC and RPE####
 Disease_sample = c("PRPF31_RP","PRPF8_RP")
@@ -2192,8 +2241,9 @@ DIS_boxplot = DIS_boxplot +
              aes(x = Sample,
                  y = 3.5,
                  label = signif(P,digits = 3)),
-             size = 8,
-             alpha = 0.75)+
+             size = 7,
+             show.legend = F,
+            color = "black")+
   geom_label(data = Disease_PTC_sum,
              aes(x = Sample,
                  y = med,
@@ -2202,14 +2252,16 @@ DIS_boxplot = DIS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = Disease_PTC_sum,
+  geom_text_repel(data = Disease_PTC_sum,
              aes(x = Sample,
                  y = -3,
                  color = PTC,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.8),
-             size = 8) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2321,7 +2373,9 @@ DIS_PE_boxplot = DIS_PE_boxplot +
              aes(x = Sample,
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 8)+
+             size = 7,
+            show.legend = F,
+            color = "black")+
   geom_label(data = PE_DIS_sum,
              aes(x = Sample,
                  y = Med,
@@ -2330,14 +2384,16 @@ DIS_PE_boxplot = DIS_PE_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = PE_DIS_sum,
+  geom_text_repel(data = PE_DIS_sum,
              aes(x = Sample,
                  y = -2.5,
                  color = isoform,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 8) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2481,7 +2537,9 @@ DIS_no_NMD_boxplot = DIS_no_NMD_boxplot +
             aes(x = Sample,
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8)+
+            size = 7,
+            show.legend = F,
+            color = "black")+
   geom_label(data = Dis_no_NMD_sum,
              aes(x = Sample,
                  y = med,
@@ -2490,14 +2548,16 @@ DIS_no_NMD_boxplot = DIS_no_NMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = Dis_no_NMD_sum,
+  geom_text_repel(data = Dis_no_NMD_sum,
             aes(x = Sample,
                 y = -2.5,
                 color = isoform,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2570,7 +2630,9 @@ disease_AS_boxplot = disease_AS_boxplot +
             aes(x = Sample,
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8)+
+            size = 7,
+            show.legend = F,
+            color = "black")+
   geom_label(data = disease_AS_sum,
              aes(x = Sample,
                  y = med,
@@ -2579,14 +2641,16 @@ disease_AS_boxplot = disease_AS_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = disease_AS_sum,
+  geom_text_repel(data = disease_AS_sum,
             aes(x = Sample,
                 y = -2.5,
                 color = factor(Gene_type,levels = c("non-AS","AS")),
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2601,142 +2665,6 @@ ggsave("Disease_AS_boxplot.pdf",
        units = "in",
        dpi = 300)
 
-#### Look at long 3'UTR based NMD targets ####
-long_3UTRs <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/NMD_long_3UTRs.csv")
-
-#Make the datatables
-for (i in all_GOI) {
-  print(i)
-  assign(paste0(i,"_3UTR"),
-         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
-           inner_join(long_3UTRs, by = c("ENST.ID" = "ensembl_transcript_id")))
-}
-
-combined_3UTR = MAGOH_3UTR %>% full_join(EIF4A3_3UTR) %>% full_join(UPF1_3UTR) %>% 
-  full_join(RBM22_3UTR) %>% full_join(AQR_3UTR) %>% full_join(SNRNP200_3UTR) %>% 
-  full_join(EFTUD2_3UTR) %>% full_join(SF3B1_3UTR) %>% full_join(SF3B3_3UTR) %>% 
-  full_join(SNRPC_3UTR) %>% full_join(SNRNP70_3UTR) %>% full_join(PRPF8_3UTR) %>%
-  full_join(PRPF6_3UTR) %>% full_join(CDC5L_3UTR) %>% full_join(SF3A1_3UTR) %>% 
-  full_join(SF3A3_3UTR) %>% full_join(U2AF1_3UTR) %>% full_join(CDC40_3UTR) %>% 
-  full_join(PRPF3_3UTR) %>% full_join(PRPF4_3UTR) %>% full_join(GNB2L1_3UTR)
-summary_3UTR = combined_3UTR %>% group_by(Sample,transcript) %>% summarise(n = n(),
-                                                                           med = median(log2FoldChange),
-                                                                           genes = n_distinct(ensembl_gene_id))
-
-all_UTR_res = tibble(Sample = character(),P = numeric())
-for (i in all_GOI) {
-  print(i)
-  assign(paste0(i,"_UTR_res"),
-         wilcox.test(log2FoldChange ~ transcript, data = combined_3UTR %>% filter(Sample == i),
-                     exact = FALSE, alternative = "less"))
-  all_UTR_res = all_UTR_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_UTR_res$p.value"))))
-}
-summary_3UTR = summary_3UTR %>% left_join(all_UTR_res)
-
-UTR_colors = c("MANE" = "#703049",
-               "NMD" = "#EB9D28")
-UTR_boxplot = ggplot(data = combined_3UTR)
-UTR_boxplot = UTR_boxplot + 
-  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                   y = log2FoldChange,
-                   fill = transcript),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = UTR_colors, labels = c("MANE" = "MANE",
-                                                   "NMD" = "long 3' UTR")) +
-  scale_color_manual(values = UTR_colors) +
-  geom_label(data = summary_3UTR,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = 3,
-                 label = paste0("p = ",signif(P,digits = 3))))+
-  geom_label(data = summary_3UTR,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = transcript,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8)) +
-  geom_label(data = summary_3UTR,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = -2.5,
-                 color = transcript,
-                 label = paste0("n =",n)),
-             show.legend = F,
-             position = position_dodge2(width = 0.9)) +
-  theme_bw() + 
-  labs(x = "Knockdown",
-       y = "Log2(Fold Change)",
-       fill = "Gene Type")+
-  coord_cartesian(y = c(-3,3))
-UTR_boxplot
-ggsave("UTR_boxplot_full.pdf",
-       device = pdf,
-       plot = UTR_boxplot,
-       width = 35,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-#Limit to the main figure transcripts
-UTR_main_fig = ggplot(data = combined_3UTR %>% filter(Sample %in% Pres_KD))
-UTR_main_fig = UTR_main_fig + 
-  geom_boxplot(aes(x = factor(Sample,
-                              levels = all_GOI),
-                   y = log2FoldChange,
-                   fill = transcript),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = UTR_colors,
-                    labels = c("MANE" = "MANE",
-                               "NMD" = "long 3' UTR")) +
-  scale_color_manual(values = UTR_colors) +
-  geom_label(data = summary_3UTR %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = 3,
-                 label = paste0("p = ",signif(P,digits = 3))),
-             size = 5,
-             alpha = 0.75)+
-  geom_label(data = summary_3UTR %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = med,
-                 color = transcript,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_label(data = summary_3UTR %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample,
-                            levels = all_GOI),
-                 y = -2.5,
-                 color = transcript,
-                 label = paste0("n =",n)),
-             show.legend = F,
-             position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
-  theme_bw() + 
-  labs(x = "Knockdown",
-       y = "Log2(Fold Change)",
-       fill = "Gene Type")+
-  coord_cartesian(y = c(-3,3))
-UTR_main_fig
-ggsave("UTR_main_fig_FC_plot.pdf",
-       device = pdf,
-       plot = UTR_main_fig,
-       width = 22,
-       height = 10,
-       units = "in",
-       dpi = 300)
 
 ####Look at fold change of non-PTC NMD targets####
 noPTC_NMD_MANE <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/NMD_MANE_noPTC.csv")
@@ -2784,7 +2712,7 @@ noPTC_NMD_boxplot = noPTC_NMD_boxplot +
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8,
+            size = 7,
             color = "black")+
   geom_label(data = noPTC_NMD_summary,
              aes(x =factor(Sample, levels = all_GOI),
@@ -2794,14 +2722,16 @@ noPTC_NMD_boxplot = noPTC_NMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = noPTC_NMD_summary,
+  geom_text_repel(data = noPTC_NMD_summary,
             aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
+                y = -3,
                 color = isoform,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2863,7 +2793,7 @@ noPTC_noAS_NMD_boxplot = noPTC_noAS_NMD_boxplot +
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8,
+            size = 7,
             color = "black")+
   geom_label(data = noPTC_noAS_NMD_summary,
              aes(x = factor(Sample, levels = all_GOI),
@@ -2873,14 +2803,16 @@ noPTC_noAS_NMD_boxplot = noPTC_noAS_NMD_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_text(data = noPTC_noAS_NMD_summary,
+  geom_text_repel(data = noPTC_noAS_NMD_summary,
             aes(x = factor(Sample, levels = all_GOI),
                 y = -2.5,
                 color = isoform,
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -2942,7 +2874,7 @@ noPTC_AS_NMD_boxplot = noPTC_AS_NMD_boxplot +
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8,
+            size = 7,
             color = "black")+
   geom_label(data = noPTC_AS_NMD_summary,
              aes(x = factor(Sample, levels = all_GOI),
@@ -2959,7 +2891,9 @@ noPTC_AS_NMD_boxplot = noPTC_AS_NMD_boxplot +
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -3024,7 +2958,7 @@ noPTC_AS_tsl_boxplot = noPTC_AS_tsl_boxplot +
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
                 label = signif(P,digits = 3)),
-            size = 8,
+            size = 7,
             color = "black")+
   geom_label(data = noPTC_AS_tsl_summary,
              aes(x = factor(Sample, levels = all_GOI),
@@ -3041,7 +2975,9 @@ noPTC_AS_tsl_boxplot = noPTC_AS_tsl_boxplot +
                 label = n),
             show.legend = F,
             position = position_dodge2(width = 0.9),
-            size = 8) +
+            size = 7,
+            direction = "y",
+            segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
@@ -3055,6 +2991,7 @@ ggsave("noPTC_AS_tsl_boxplot.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Look at NMD transcripts that are MANE themselves####
 MANE_NMD = read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/NMD_MANE_and_TSL1.csv")
@@ -3207,234 +3144,6 @@ ggsave("MANE_boxplot.pdf",
        units = "in",
        dpi = 300)
 
-####Compare the LA no NMD isoforms to the MANE NMD isoforms####
-NMD_MANE_only = all_MANE_NMD %>% filter(NMD == "TRUE") %>% mutate(Type = "NMD")
-LA_nonNMD_MANE_only = all_LAnoNMD  %>% mutate(Type = "No_NMD")
-NMD_LA_MANE = NMD_MANE_only %>% full_join(LA_nonNMD_MANE_only)
-
-NMD_LA_MANE_summary = NMD_LA_MANE %>% group_by(Sample, Type) %>% 
-  summarise(n = n(),
-            med = median(log2FoldChange))
-NMD_LA_res = tibble(Sample = character(),P = numeric())
-for (i in all_GOI) {
-  print(i)
-  assign(paste0(i,"_NMD_LA_res"),
-         wilcox.test(log2FoldChange ~ Type, data = NMD_LA_MANE %>% filter(Sample == i),
-                     exact = FALSE, alternative = "greater")) #greater because we expect the NMD to be higher
-  NMD_LA_res = NMD_LA_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_NMD_LA_res$p.value"))))
-}
-NMD_LA_MANE_summary = NMD_LA_MANE_summary %>% left_join(NMD_LA_res)
-
-NMD_LA_colors = c("NMD" = "#F27D2E",
-                  "No_NMD" = "#B27092")
-NMD_LA_Boxplot = ggplot(data = NMD_LA_MANE)
-NMD_LA_Boxplot = NMD_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                   y = log2FoldChange,
-                                                   fill = Type),
-                                               position = position_dodge2(width = 0.9),
-                                               width = 0.8,
-                                               outlier.shape = 21,
-                                               outlier.alpha = 0.5,
-                                               outlier.colour = NA,
-                                               linewidth = 1) +
-  scale_fill_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
-                                                       "No_NMD" = "Non NMD")) +
-  scale_color_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
-                                                        "No_NMD" = "Non NMD")) +
-  geom_text(data = NMD_LA_MANE_summary %>% filter(Type == "NMD"),
-            aes(x = factor(Sample, levels = all_GOI),
-                y = 3,
-                label = signif(P,digits = 3)),
-            size = 8,
-            color = "black") +
-  geom_label(data = NMD_LA_MANE_summary,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = Type,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text(data = NMD_LA_MANE_summary,
-            aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
-                color = Type,
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 8) +
-  labs(x = "Depletion",
-       y = "log2(Fold Change)",
-       fill = "Transcript Type",
-       title = "MANE NMD transcripts vs LA no-NMD")+
-  coord_cartesian(y = c(-4,4)) +
-  theme_bw()
-NMD_LA_Boxplot
-ggsave("NMD_MANE_vs_LA_noNMD.pdf",
-       plot = NMD_LA_Boxplot,
-       device = pdf,
-       width = 40,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-MainFig_NMD_LA_Boxplot = ggplot(data = NMD_LA_MANE %>% filter(Sample %in% Pres_KD))
-MainFig_NMD_LA_Boxplot = MainFig_NMD_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                   y = log2FoldChange,
-                                                   fill = Type),
-                                               position = position_dodge2(width = 0.9),
-                                               width = 0.8,
-                                               outlier.shape = 21,
-                                               outlier.alpha = 0.5,
-                                               outlier.colour = NA,
-                                               linewidth = 1) +
-  scale_fill_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
-                                                       "No_NMD" = "Non NMD")) +
-  scale_color_manual(values = NMD_LA_colors, labels = c("NMD" = "NMD",
-                                                        "No_NMD" = "Non NMD")) +
-  geom_text(data = NMD_LA_MANE_summary %>% filter(Type == "NMD" & Sample %in% Pres_KD),
-            aes(x = factor(Sample, levels = all_GOI),
-                y = 3,
-                label = signif(P,digits = 3)),
-            size = 8,
-            color = "black") +
-  geom_label(data = NMD_LA_MANE_summary %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = Type,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text(data = NMD_LA_MANE_summary %>% filter(Sample %in% Pres_KD),
-            aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
-                color = Type,
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 8) +
-  labs(x = "Depletion",
-       y = "log2(Fold Change)",
-       fill = "Transcript Type",
-       title = "MANE NMD transcripts vs LA no-NMD")+
-  coord_cartesian(y = c(-4,4)) +
-  theme_bw()
-MainFig_NMD_LA_Boxplot
-ggsave("MainFig_NMD_MANE_vs_LA_noNMD.pdf",
-       plot = MainFig_NMD_LA_Boxplot,
-       device = pdf,
-       width = 20,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-##Look at MANE vs PTC vs LA no NMD##
-PTC_only = PTC_combined %>% mutate(Type = if_else(PTC == "TRUE",
-                                                  "PTC",
-                                                  "MANE")) %>%
-  select(1:8,10,12)
-PTC_MANE_noNMD = LA_nonNMD_MANE_only %>% full_join(PTC_only)
-PTC_MANE_noNMD_summary = PTC_NMDmane_noNMD %>% group_by(Sample,Type) %>% 
-  summarise(n = n(),
-            med = median(log2FoldChange))
-
-NMD_PTC_LA_colors = c("MANE" = "#663171",
-                      "No_NMD" = "#FE64A3",
-                      "PTC" = "#EA7428")
-NMD_PTC_LA_Boxplot = ggplot(data = PTC_MANE_noNMD)
-NMD_PTC_LA_Boxplot = NMD_PTC_LA_Boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                   y = log2FoldChange,
-                                                   fill = Type),
-                                               position = position_dodge2(width = 0.9),
-                                               width = 0.8,
-                                               outlier.shape = 21,
-                                               outlier.alpha = 0.5,
-                                               outlier.colour = NA,
-                                               linewidth = 1) +
-  scale_fill_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
-                                                            "No_NMD" = "Non NMD",
-                                                            "PTC" = "PTC NMD")) +
-  scale_color_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
-                                                        "No_NMD" = "Non NMD",
-                                                        "PTC"="PTC NMD")) +
-  geom_label(data = PTC_MANE_noNMD_summary,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = Type,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 3) +
-  geom_text(data = PTC_MANE_noNMD_summary,
-            aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
-                color = Type,
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 7) +
-  labs(x = "Depletion",
-       y = "log2(Fold Change)",
-       fill = "Transcript Type",
-       title = "MANE isoforms vs PTC isoforms vs LA no-NMD transcripts")+
-  coord_cartesian(y = c(-4,4)) +
-  theme_bw()
-NMD_PTC_LA_Boxplot
-ggsave("MANE_vs_PTC_vs_LA_noNMD.pdf",
-       plot = NMD_PTC_LA_Boxplot,
-       device = pdf,
-       width = 40,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-NMD_PTC_LA_Boxplot_mainfig = ggplot(data = PTC_MANE_noNMD %>% filter(Sample %in% Pres_KD))
-NMD_PTC_LA_Boxplot_mainfig = NMD_PTC_LA_Boxplot_mainfig + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                           y = log2FoldChange,
-                                                           fill = Type),
-                                                       position = position_dodge2(width = 0.9),
-                                                       width = 0.8,
-                                                       outlier.shape = 21,
-                                                       outlier.alpha = 0.5,
-                                                       outlier.colour = NA,
-                                                       linewidth = 1) +
-  scale_fill_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
-                                                           "No_NMD" = "Non NMD",
-                                                           "PTC" = "PTC NMD")) +
-  scale_color_manual(values = NMD_PTC_LA_colors, labels = c("NMD" = "MANE NMD",
-                                                            "No_NMD" = "Non NMD",
-                                                            "PTC"="PTC NMD")) +
-  geom_label(data = PTC_MANE_noNMD_summary %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = Type,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 3) +
-  geom_text(data = PTC_MANE_noNMD_summary %>% filter(Sample %in% Pres_KD),
-            aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
-                color = Type,
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 7) +
-  labs(x = "Depletion",
-       y = "log2(Fold Change)",
-       fill = "Transcript Type",
-       title = "MANE isoforms vs PTC isoforms vs LA no-NMD transcripts")+
-  coord_cartesian(y = c(-4,4)) +
-  theme_bw()
-NMD_PTC_LA_Boxplot_mainfig
-ggsave("main_fig_MANE_vs_PTC_vs_LA_noNMD.pdf",
-       plot = NMD_PTC_LA_Boxplot_mainfig,
-       device = pdf,
-       width = 20,
-       height = 10,
-       units = "in",
-       dpi = 300)
 
 #### Look at MANE vs PTC vs Other genes from the same set of genes ####
 PTC_genes = getBM(attributes = "ensembl_gene_id",
@@ -3481,7 +3190,7 @@ all_PTC_boxplot = all_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels =
   scale_color_manual(values = all_PTC_colors) +
   geom_text_repel(data = all_PTC_FC_summary,
             aes(x = factor(Sample, levels = all_GOI),
-                y = -2.5,
+                y = -3,
                 color = Type,
                 label = n),
             show.legend = F,
@@ -3536,7 +3245,7 @@ PTC_TSL_boxplot = PTC_TSL_boxplot + geom_boxplot(aes(x = factor(Sample, levels =
   scale_color_manual(values = all_PTC_colors) +
   geom_text_repel(data = PTC_tsl_summary,
                   aes(x = factor(Sample, levels = all_GOI),
-                      y = -2.5,
+                      y = -3,
                       color = Type,
                       label = n),
                   show.legend = F,
@@ -3581,7 +3290,7 @@ mainfig_PTC_TSL_boxplot = mainfig_PTC_TSL_boxplot + geom_boxplot(aes(x = factor(
   scale_color_manual(values = all_PTC_colors) +
   geom_text_repel(data = PTC_tsl_summary %>% filter(Sample %in% Pres_KD),
                   aes(x = factor(Sample, levels = all_GOI),
-                      y = -2.5,
+                      y = -3,
                       color = Type,
                       label = n),
                   show.legend = F,
@@ -3612,6 +3321,7 @@ ggsave("main_fig_PTC_genes_TSL12_all_isoforms.pdf",
        device = pdf,
        dpi = 300)
 
+
 ####ID genes with AS events in multiple samples####
 shared_AS = MAGOH_sig_AS_genes %>% inner_join(EIF4A3_sig_AS_genes) %>% inner_join(UPF1_sig_AS_genes) %>% 
   inner_join(RBM22_sig_AS_genes) %>% inner_join(AQR_sig_AS_genes) %>% inner_join(SNRNP200_sig_AS_genes) %>% 
@@ -3631,6 +3341,7 @@ genes_with_novel_isoforms <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State 
 shared_AS_novel = Shared_AS_NMD_iso %>% filter(ensembl_gene_id %in% genes_with_novel_isoforms$gene_id)
 shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman_inclusion_NMD_transcripts$ensembl_transcript_id &
                                                cds_length < 1000)
+
 
 ####Look at the effect of including novel isoforms in the kallisto transcriptome ####
 NK_full_alltrans = tibble(Sample = character())
@@ -3812,6 +3523,7 @@ ggsave("NK_PTC_isoforms_no_novel.pdf",
        device = pdf,
        dpi = 300)
 
+
 ####Make a master list of transcripts in the KDs####
 master_list = tibble(Sample = character())
 for (i in all_GOI) {
@@ -3836,6 +3548,7 @@ master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_
                            mart = ensembl)
 master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
 write_csv(master_list,"KD_DEseq_masterlist.csv")
+
 
 ###Look at highly upregulated transcripts####
 upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1","AQR")
@@ -3876,6 +3589,7 @@ ggsave("Upregulated_overlap.pdf",
        height = 10,
        units = "in",
        dpi =300)
+
 
 ####Make a scatter plot of KDs compared to EIF4A3 KD####
 for (i in upreg_test) {
@@ -3946,6 +3660,7 @@ ggsave("NMD_biotype_comparison_upreg.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 ####Pull the transcripts that are up and down in each sample ####
 full_upregulated = tibble(Sample = character())
@@ -4068,6 +3783,7 @@ shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" =
 write_csv(shared_PTC_up,"sPTC_upregualted.csv")
 
 
+
 ####Look at Spliciing Inhibitor treatment####
 Splicing_inhibitors = c("Risdiplam","Plad")
 full_SI_MANE_PTC = tibble(Sample = character())
@@ -4162,6 +3878,7 @@ ggsave("Splicing_Inhibitor_sPTC_boxplot.pdf",
        device = pdf,
        dpi = 300)
 
+
 #### Look at the gene level DE analysis ####
 full_GL_alltrans = tibble(Sample = character())
 full_GL_NMD_alltrans = tibble(Sample = character())
@@ -4208,7 +3925,7 @@ GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                       label = n),
                   show.legend = F,
                   position = position_dodge2(width = 0.8),
-                  size = 8,
+                  size = 7,
                   direction = "y",
                   segment.color = NA) +
   geom_label(data = full_GL_NMD_summary,
@@ -4224,7 +3941,7 @@ GL_NMD_box = GL_NMD_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P, digits = 3)),
              show.legend = F,
-             size = 8,
+             size = 7,
              color = "black") +
   labs(y = "Log2(Fold Change)",
        fill = "Gene Type") +
