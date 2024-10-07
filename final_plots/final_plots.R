@@ -202,12 +202,13 @@ PTC_boxplot = PTC_boxplot +
                                                    "TRUE" = "PTC")) +
   scale_color_manual(values = colors, labels = c("FALSE" = "MANE",
                                                     "TRUE" = "PTC"))+
-  geom_label(data = PTC_sum %>% filter(Sample %in% Pres_KD),
-             aes(x = Sample,
+  geom_text(data = PTC_sum %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = Pres_KD),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black",
+            show.legend = F)+
   geom_label(data = PTC_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = Pres_KD),
                  y = med,
@@ -216,22 +217,23 @@ PTC_boxplot = PTC_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = PTC_sum %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample, levels = Pres_KD),
-                 y = -3.5,
-                 color = PTC,
-                 label = n),
+  geom_text_repel(data = PTC_sum %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample, levels = Pres_KD),
+                      y = -3,
+                      color = PTC,
+                      label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
        fill = "Transcript")+
   coord_cartesian(y = c(-4,4))
 PTC_boxplot
-#Last saved and modified on 5/10/2024
+#Last saved and modified on 10/7/2024
 ggsave("PTC_boxplot_FC.pdf",
        device = pdf,
        plot = PTC_boxplot,
@@ -256,12 +258,12 @@ full_PTC_boxplot = full_PTC_boxplot +
                                                 "TRUE" = "PTC")) +
   scale_color_manual(values = colors, labels = c("FALSE" = "MANE",
                                                  "TRUE" = "PTC"))+
-  geom_label(data = PTC_sum,
+  geom_text(data = PTC_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 5,
-             alpha = 0.75)+
+             size = 7,
+             color = "black")+
   geom_label(data = PTC_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
@@ -270,22 +272,23 @@ full_PTC_boxplot = full_PTC_boxplot +
              show.legend = F,
              position = position_dodge2(width = 0.8),
              size = 5) +
-  geom_label(data = PTC_sum,
+  geom_text_repel(data = PTC_sum,
              aes(x = factor(Sample, levels = all_GOI),
-                 y = -3.5,
+                 y = -3,
                  color = PTC,
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 5,
-             alpha = 0.75) +
+             size = 7,
+             direction = "y",
+             segment.color = NA) +
   theme_bw() + 
   labs(x = "Sample",
        y = "Log2 Fold Change",
        fill = "Transcript")+
   coord_cartesian(y = c(-4,4))
 full_PTC_boxplot
-#Last saved and modified on 5/10/2024
+#Last saved and modified on 10/7/2024
 ggsave("PTC_boxplot_full.pdf",
        device = pdf,
        plot = full_PTC_boxplot,
@@ -3630,9 +3633,8 @@ shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman
                                                cds_length < 1000)
 
 ####Look at the effect of including novel isoforms in the kallisto transcriptome ####
-NK_samples = c("UPF1","EIF4A3","MAGOH","EFTUD2","AQR","SF3B1","SF3B3","CDC40")
 NK_full_alltrans = tibble(Sample = character())
-for (i in NK_samples) {
+for (i in Pres_KD) {
   print(i)
   assign(paste0(i,"_NK_alltrans"),
          read_csv(paste0(i,"_NK_alltrans.csv")))
@@ -3651,14 +3653,14 @@ NK_colors = c("MANE" = "#713E5A",
               "Novel" = "#DD7373")
 NK_full_boxplot = ggplot(NK_full_alltrans)
 NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                                     y = log2FoldChange,
-                                                                     fill = Category),
-                                                                 position = position_dodge2(width = 0.9),
-                                                                 width = 0.8,
-                                                                 outlier.shape = 21,
-                                                                 outlier.alpha = 0.5,
-                                                                 outlier.colour = NA,
-                                                                 linewidth = 1) +
+                                                     y = log2FoldChange,
+                                                     fill = Category),
+                                                 position = position_dodge2(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1) +
   scale_fill_manual(values = NK_colors) +
   scale_color_manual(values = NK_colors) +
   geom_text_repel(data = NK_full_summary,
@@ -3726,7 +3728,7 @@ NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = a
                                                  outlier.shape = 21,
                                                  outlier.alpha = 0.5,
                                                  outlier.colour = NA,
-                                                 linewidth = 1) +
+                                               linewidth = 1) +
   scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
   scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
   geom_text_repel(data = NK_PTC_summary,
@@ -3767,20 +3769,20 @@ NK_no_novel_summary = NK_no_novel %>% group_by(Sample, Type) %>% summarise(n = n
                                                                            med = median(log2FoldChange))
 NK_no_Novel_boxplot = ggplot(NK_no_novel)
 NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                   y = log2FoldChange,
-                                                   fill = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable"))),
-                                               position = position_dodge2(width = 0.9),
-                                               width = 0.8,
-                                               outlier.shape = 21,
-                                               outlier.alpha = 0.5,
-                                               outlier.colour = NA,
-                                               linewidth = 1) +
-  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
-  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
+                                                             y = log2FoldChange,
+                                                             fill = factor(Type,levels = c("MANE","PTC","Other"))),
+                                                         position = position_dodge2(width = 0.9),
+                                                         width = 0.8,
+                                                         outlier.shape = 21,
+                                                         outlier.alpha = 0.5,
+                                                         outlier.colour = NA,
+                                                         linewidth = 1) +
+  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other")) +
+  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other")) +
   geom_text_repel(data = NK_no_novel_summary,
                   aes(x = factor(Sample, levels = all_GOI),
                       y = -3,
-                      color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
+                      color = factor(Type,levels = c("MANE","PTC","Other")),
                       label = n),
                   show.legend = F,
                   position = position_dodge2(width = 0.9),
@@ -3790,7 +3792,7 @@ NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, 
   geom_label(data = NK_no_novel_summary,
              aes(x = factor(Sample, levels = all_GOI),
                  y = med,
-                 color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
+                 color = factor(Type,levels = c("MANE","PTC","Other")),
                  label = round(med, digits = 3)),
              show.legend = F,
              position = position_dodge2(width = 0.8),
