@@ -3782,6 +3782,49 @@ shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
 shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
 write_csv(shared_PTC_up,"sPTC_upregualted.csv")
 
+#Look at the PE isoforms that are upregulated
+full_PE_up = tibble(Sample = character())
+lax_PE_up = tibble(Sample = character())
+PE_NMD_only = PE_transcripts %>% filter(isoform == "NMD") %>% distinct(ensembl_transcript_id)
+for (i in all_GOI) {
+  assign(paste0(i,"_PE_upregulated"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(ENST.ID %in% PE_NMD_only$ensembl_transcript_id & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
+  assign(paste0(i,"_PE_lax_up"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           filter(ENST.ID %in% PE_NMD_only$ensembl_transcript_id & baseMean > 5 & log2FoldChange > 0.58 & padj < 0.05))
+  full_PE_up = full_PE_up %>% full_join(eval(parse(text = paste0(i,"_PE_upregulated"))))
+  lax_sPTC_up = lax_PE_up %>% full_join(eval(parse(text = paste0(i,"_PE_lax_up"))))
+}
+full_PE_count = full_PE_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_PE_up = full_PE_count %>% filter(count > 5)
+shared_PE_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                          filters = "ensembl_transcript_id",
+                          values = shared_PE_up$ENST.ID,
+                          mart = ensembl)
+shared_PE_up = shared_PE_up %>% left_join(shared_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_PE_up,"PE_upregulated.csv")
+lax_PE_count = lax_PE_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
+  group_by(ENST.ID) %>% 
+  summarise(count = n(),
+            med_BM = median(baseMean),
+            med_FC = median(log2FoldChange),
+            avg_BM = mean(baseMean),
+            avg_FC = mean(log2FoldChange))
+shared_lax_PE = lax_sPTC_count %>% filter(count > 5)
+shared_lax_PE_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
+                         filters = "ensembl_transcript_id",
+                         values = shared_lax_PE$ENST.ID,
+                         mart = ensembl)
+shared_lax_PE = shared_lax_PE %>% left_join(shared_lax_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(shared_lax_PE,"lax_PE_upregulated.csv")
+
 
 
 ####Look at Spliciing Inhibitor treatment####
