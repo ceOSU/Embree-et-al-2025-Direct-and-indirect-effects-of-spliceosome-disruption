@@ -1906,21 +1906,18 @@ WT5_sum_genelevel = all_WT5_genelevel %>% group_by(Sample,sig_SE) %>%
          prop = number/tot) %>% 
   left_join(Sample_complex,by = "Sample")
 
-Complex_colors = c("Catalytic" = "#1a264f","Early" = "#cc2027","NA" = "grey")
+Complex_colors = c("Catalytic" = "#1c998b","Early" = "#fe5f55","NA" = "grey")
 WT5_genelevel_prop = ggplot(data = WT5_sum_genelevel %>% filter(sig_SE == "TRUE"))
-WT5_genelevel_prop = WT5_genelevel_prop + geom_point(aes(x = factor(Sample, levels = all_order),
+WT5_genelevel_prop = WT5_genelevel_prop + geom_col(aes(x = factor(Sample, levels = all_order),
                                                        y = prop,
-                                                       color = Splice_Stage),
-                                                     size = 3) +
-  geom_text_repel(aes(x = Sample,
-                y = prop,
-                label = paste0(number,"/",tot)),
-             show.legend = F, color = "black") + #Shows the number of transcripts that represent the total (i.e. 1)
+                                                       fill = Splice_Stage)) +
   scale_color_manual(values = Complex_colors) +
+  scale_fill_manual(values = Complex_colors) +
   theme_bw() +
   labs(x = element_blank(),
        y = "Proportion of Genes",
-       title = "Proportion of highly expressed genes undergoing AS")
+       title = "Proportion of highly expressed genes undergoing AS",
+       fill = "Spliceosome Stage")
 WT5_genelevel_prop
 ggsave("WT5_AS_genelevel_proption.pdf",
        plot = WT5_genelevel_prop,
@@ -1996,7 +1993,7 @@ all_events_plot
 ggsave("Sign_and_novel_events.pdf",
        plot = all_events_plot,
        device = pdf,
-       height = 12,
+       height = 6,
        width = 12,
        units = "in",
        dpi = 300)

@@ -122,6 +122,7 @@ ggsave("DBfilt_Log2FC_freq.pdf",
 
 
 
+
 #### Look at the Log2FC of PTC+- gene list####
 for (i in all_GOI) {
   print(i)
@@ -297,56 +298,6 @@ ggsave("PTC_boxplot_full.pdf",
        height = 10,
        units = "in",
        dpi = 300)
-
-##Make a heatmap of the P-value of each of the KDs for the summary figure
-#Rearainge the data table
-hm_df =PTC_sum %>% ungroup() %>% dplyr::select(Sample,P) %>% distinct(Sample,.keep_all = T) #Filter to just the data needed for the heatmap
-hm_df = hm_df %>% mutate(Sample = factor(Sample, levels = all_GOI)) %>% arrange(Sample) #Put them in the order of the other figures
-hm_df = hm_df %>% column_to_rownames(var="Sample") #Put the data in the format of pheatmap
-hm_small = hm_df %>% filter(P < 0.01)
-hm_large = hm_df %>% filter(P >= 0.01)
-#Make the breaks
-breaklist_small = c(seq(min(hm_df),0.01,length.out = 1000))
-colors_small = colorRampPalette(c("#474ED7","#EC458D"))(999)
-breaklist_large = c(seq(0.01,1,length.out = 100))
-colors_large = colorRampPalette(c("#EC458D","#FFF1BF"))(99)
-#Try making two heatmaps, one going from min-0.05 and one from 0.05-1
-
-#Make heatmap
-HM_PTC_small = pheatmap(hm_small,
-                  color = colors_small,
-                  breaks = breaklist_small,
-                  na_col = "grey",
-                  cluster_rows = F,
-                  cluster_cols = F,
-                  display_numbers = T,
-                  number_format = "%.1e",
-                  number_color = "white")#heatmap going from the smallest P-value to 0.01
-ggsave("PTC_heatmap_smallP.pdf",
-       device = pdf,
-       plot = HM_PTC_small,
-       width = 3,
-       height = 6,
-       units = "in",
-       dpi = 300)
-HM_PTC_large = pheatmap(hm_large,
-                        color = colors_large,
-                        breaks = breaklist_large,
-                        na_col = "grey",
-                        cluster_rows = F,
-                        cluster_cols = F,
-                        display_numbers = T,
-                        number_format = "%.1e",
-                        number_color = "black")#heatmap going from the 0.01 to 1
-ggsave("PTC_heatmap_largeP.pdf",
-       device = pdf,
-       plot = HM_PTC_large,
-       width = 3,
-       height = 3,
-       units = "in",
-       dpi = 300)
-
-
 
 
 #import and manipulate data (Manu's no NMD gene list")####
@@ -1006,7 +957,7 @@ PE_Colors = c("NMD" = "#e94220",
 
 PE_boxplot = ggplot(data = PE_FC %>% filter(Sample %in% Pres_KD))
 PE_boxplot = PE_boxplot + 
-  geom_boxplot(aes(x = factor(Sample, levels = Pres_KD),
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                    y = log2FoldChange,
                    fill = isoform),
                position = position_dodge2(width = 0.9),
@@ -1018,14 +969,14 @@ PE_boxplot = PE_boxplot +
   scale_fill_manual(values = PE_Colors) +
   scale_color_manual(values = PE_Colors)+
   geom_text(data = PE_pres_sum %>% filter(Sample %in% Pres_KD & isoform == "NMD"),
-             aes(x = factor(Sample, levels = Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = paste0("p = ",signif(P,digits = 3))),
+                 label = signif(P,digits = 3)),
              size = 7,
              color = "black",
             show.legend = F)+
   geom_label(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
-             aes(x = factor(Sample, levels = Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
                  y = Med,
                  color = isoform,
                  label = round(Med, digits = 3)),
@@ -1033,10 +984,10 @@ PE_boxplot = PE_boxplot +
              position = position_dodge2(width = 0.8),
              size = 5) +
   geom_text_repel(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
-                  aes(x = factor(Sample, levels = Pres_KD),
+                  aes(x = factor(Sample, levels = all_GOI),
                       y = -3,
                       color = isoform,
-                      label = paste0("n =",n)),
+                      label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
              size = 7,
@@ -1072,7 +1023,7 @@ full_PE_boxplot = full_PE_boxplot +
   geom_text(data = PE_FC_sum %>% filter(isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = paste0("p = ",signif(P,digits = 3))),
+                 label = signif(P,digits = 3)),
              size = 7,
              color = "black")+
   geom_label(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
@@ -1087,7 +1038,7 @@ full_PE_boxplot = full_PE_boxplot +
              aes(x = factor(Sample, levels = all_GOI),
                  y = -3,
                  color = isoform,
-                 label = paste0("n =",n)),
+                 label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
              size = 7,
@@ -1248,6 +1199,7 @@ ggsave("Saltzman_PE_boxplot_main_fig.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+
 
 
 #### Make FC plot for AS genes vs not####
@@ -3175,6 +3127,7 @@ all_PTC_FC_summary = all_PTC_foldchange %>% group_by(Sample,Type) %>%
 
 all_PTC_colors = c("MANE" = "#663171",
                    "PTC" = "#EA7428",
+                   "NMD" = "#EA7428",
                    "Other" = "#6FC37D")
 all_PTC_boxplot = ggplot(all_PTC_foldchange)
 all_PTC_boxplot = all_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
@@ -3322,6 +3275,7 @@ ggsave("main_fig_PTC_genes_TSL12_all_isoforms.pdf",
        dpi = 300)
 
 
+
 ####ID genes with AS events in multiple samples####
 shared_AS = MAGOH_sig_AS_genes %>% inner_join(EIF4A3_sig_AS_genes) %>% inner_join(UPF1_sig_AS_genes) %>% 
   inner_join(RBM22_sig_AS_genes) %>% inner_join(AQR_sig_AS_genes) %>% inner_join(SNRNP200_sig_AS_genes) %>% 
@@ -3343,185 +3297,6 @@ shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman
                                                cds_length < 1000)
 
 
-####Look at the effect of including novel isoforms in the kallisto transcriptome ####
-NK_full_alltrans = tibble(Sample = character())
-for (i in Pres_KD) {
-  print(i)
-  assign(paste0(i,"_NK_alltrans"),
-         read_csv(paste0(i,"_NK_alltrans.csv")))
-  assign(paste0(i,"_NK_alltrans"),
-         eval(parse(text = paste0(i,"_NK_alltrans"))) %>% mutate(Sample = i,
-                                                                 Category = case_when(str_detect(ENST.ID,"MST") ~ "Novel",
-                                                                                      str_detect(ENST.ID,"ENST") & str_detect(transcript_mane_select,"NM") ~ "MANE",
-                                                                                      TRUE ~ "Other")))
-  NK_full_alltrans = NK_full_alltrans %>% full_join(eval(parse(text = paste0(i,"_NK_alltrans"))))
-}
-NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(n = n(),
-                                                                                med = median(log2FoldChange))
-
-NK_colors = c("MANE" = "#713E5A",
-              "Other" = "#6FC37D",
-              "Novel" = "#DD7373")
-NK_full_boxplot = ggplot(NK_full_alltrans)
-NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                     y = log2FoldChange,
-                                                     fill = Category),
-                                                 position = position_dodge2(width = 0.9),
-                                                 width = 0.8,
-                                                 outlier.shape = 21,
-                                                 outlier.alpha = 0.5,
-                                                 outlier.colour = NA,
-                                                 linewidth = 1) +
-  scale_fill_manual(values = NK_colors) +
-  scale_color_manual(values = NK_colors) +
-  geom_text_repel(data = NK_full_summary,
-                  aes(x = factor(Sample, levels = all_GOI),
-                      y = -3,
-                      color = Category,
-                      label = n),
-                  show.legend = F,
-                  position = position_dodge2(width = 0.9),
-                  size = 7,
-                  direction = "y",
-                  segment.color = NA) +
-  geom_label(data = NK_full_summary,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = Category,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 3) +
-  labs(x = "Depletion",
-       y = "Log2(Fold Change)",
-       fill = "Isoform Type",
-       caption = "all isoforms") +
-  coord_cartesian(ylim = c(-4,4)) +
-  theme_bw()
-NK_full_boxplot
-ggsave("novel_kallisto_all_isoforms.pdf",
-       plot = NK_full_boxplot,
-       width = 20,
-       height = 10,
-       units = "in",
-       device = pdf,
-       dpi = 300)
-
-#Filter to only the genes on the NMD list
-PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"),
-                  filters = "ensembl_transcript_id",
-                  values = sPTC_list$transID,
-                  mart = ensembl)
-NK_PTC_only = NK_full_alltrans %>% filter(ensembl_gene_id %in% PTC_genes$ensembl_gene_id)
-NK_PTC_only = NK_PTC_only %>% left_join(sPTC_list, by = c("ENST.ID" = "transID",
-                                                         "external_gene_name" = "Gene"))
-NK_PTC_only = NK_PTC_only %>% mutate(Type = case_when(Category == "MANE" ~ "MANE",
-                                                      Category == "Other" & PTC.y == "TRUE" ~ "PTC",
-                                                      Category == "Novel" & PTC.x == "TRUE" ~ "novel NMD",
-                                                      Category == "Novel" & PTC.x == "FALSE" ~ "novel stable",
-                                                      Category == "Novel" & is.na(PTC.x) ~ "Drop",
-                                                      TRUE ~ "Other")) %>% 
-  filter(Type != "Drop")
-NK_PTC_summary = NK_PTC_only %>% group_by(Sample, Type) %>% summarise(n = n(),
-                                                                      med = median(log2FoldChange))
-
-NK_PTC_colors = c("MANE" = "#663171",
-                  "PTC" = "#EA7428",
-                  "Other" = "#6FC37D",
-                  "novel NMD" = "#DD7373",
-                  "novel stable" = "#0075A2")
-NK_PTC_boxplot = ggplot(NK_PTC_only)
-NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                     y = log2FoldChange,
-                                                     fill = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable"))),
-                                                 position = position_dodge2(width = 0.9),
-                                                 width = 0.8,
-                                                 outlier.shape = 21,
-                                                 outlier.alpha = 0.5,
-                                                 outlier.colour = NA,
-                                               linewidth = 1) +
-  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
-  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other","novel NMD","novel stable")) +
-  geom_text_repel(data = NK_PTC_summary,
-                  aes(x = factor(Sample, levels = all_GOI),
-                      y = -3,
-                      color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
-                      label = n),
-                  show.legend = F,
-                  position = position_dodge2(width = 0.9),
-                  size = 7,
-                  direction = "y",
-                  segment.color = NA) +
-  geom_label(data = NK_PTC_summary,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = factor(Type,levels = c("MANE","PTC","Other","novel NMD","novel stable")),
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 3) +
-  labs(x = "Depletion",
-       y = "Log2(Fold Change)",
-       fill = "Isoform Type",
-       caption = "PTC list isoforms") +
-  coord_cartesian(ylim = c(-4,4)) +
-  theme_bw()
-NK_PTC_boxplot
-ggsave("novel_kallisto_PTC_isoforms.pdf",
-       plot = NK_PTC_boxplot,
-       width = 20,
-       height = 10,
-       units = "in",
-       device = pdf,
-       dpi = 300)
-
-NK_no_novel = NK_PTC_only %>% filter(!str_detect(Type,"novel"))
-NK_no_novel_summary = NK_no_novel %>% group_by(Sample, Type) %>% summarise(n = n(),
-                                                                           med = median(log2FoldChange))
-NK_no_Novel_boxplot = ggplot(NK_no_novel)
-NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                                                             y = log2FoldChange,
-                                                             fill = factor(Type,levels = c("MANE","PTC","Other"))),
-                                                         position = position_dodge2(width = 0.9),
-                                                         width = 0.8,
-                                                         outlier.shape = 21,
-                                                         outlier.alpha = 0.5,
-                                                         outlier.colour = NA,
-                                                         linewidth = 1) +
-  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other")) +
-  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","PTC","Other")) +
-  geom_text_repel(data = NK_no_novel_summary,
-                  aes(x = factor(Sample, levels = all_GOI),
-                      y = -3,
-                      color = factor(Type,levels = c("MANE","PTC","Other")),
-                      label = n),
-                  show.legend = F,
-                  position = position_dodge2(width = 0.9),
-                  size = 7,
-                  direction = "y",
-                  segment.color = NA) +
-  geom_label(data = NK_no_novel_summary,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = med,
-                 color = factor(Type,levels = c("MANE","PTC","Other")),
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 3) +
-  labs(x = "Depletion",
-       y = "Log2(Fold Change)",
-       fill = "Isoform Type",
-       caption = "PTC list isoforms") +
-  coord_cartesian(ylim = c(-4,4)) +
-  theme_bw()
-NK_no_Novel_boxplot
-ggsave("NK_PTC_isoforms_no_novel.pdf",
-       plot = NK_no_Novel_boxplot,
-       width = 20,
-       height = 10,
-       units = "in",
-       device = pdf,
-       dpi = 300)
 
 
 ####Make a master list of transcripts in the KDs####
@@ -3548,6 +3323,7 @@ master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_
                            mart = ensembl)
 master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
 write_csv(master_list,"KD_DEseq_masterlist.csv")
+
 
 
 ###Look at highly upregulated transcripts####
@@ -3732,12 +3508,8 @@ for (i in all_GOI) {
   assign(paste0(i,"_sPTC_lax_up"),
          eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
            filter(sPTC == "TRUE" & baseMean > 5 & log2FoldChange > 0.58 & padj < 0.05))
-  assign(paste0(i,"_PTC_upregulated"),
-         eval(parse(text = paste0(i,"_PTC_annotated"))) %>% 
-           filter(PTC_plus == "TRUE" & baseMean > 100 & log2FoldChange > 0.58 & padj < 0.05))
   full_sPTC_up = full_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_upregulated"))))
   lax_sPTC_up = lax_sPTC_up %>% full_join(eval(parse(text = paste0(i,"_sPTC_lax_up"))))
-  full_PTC_up = full_PTC_up %>% full_join(eval(parse(text = paste0(i,"_PTC_upregulated"))))
 }
 full_sPTC_count = full_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
@@ -3751,7 +3523,8 @@ shared_sPTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_i
                      filters = "ensembl_transcript_id",
                      values = shared_sPTC_up$ENST.ID,
                      mart = ensembl)
-shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+shared_sPTC_up = shared_sPTC_up %>% left_join(shared_sPTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  rename(Number_KD = count)
 write_csv(shared_sPTC_up,"sPTC_upregulated.csv")
 lax_sPTC_count = lax_sPTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
@@ -3765,22 +3538,10 @@ shared_lax_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id
                          filters = "ensembl_transcript_id",
                          values = shared_lax_up$ENST.ID,
                          mart = ensembl)
-shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+shared_lax_up = shared_lax_up %>% left_join(shared_lax_genes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  rename(Number_KD = count)
 write_csv(shared_lax_up,"lax_sPTC_upregulated.csv")
-PTC_up_count = full_PTC_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
-  group_by(ENST.ID) %>% 
-  summarise(count = n(),
-            med_BM = median(baseMean),
-            med_FC = median(log2FoldChange),
-            avg_BM = mean(baseMean),
-            avg_FC = mean(log2FoldChange))
-shared_PTC_up = PTC_up_count %>% filter(count > 5)
-shared_PTC_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
-                         filters = "ensembl_transcript_id",
-                         values = shared_PTC_up$ENST.ID,
-                         mart = ensembl)
-shared_PTC_up = shared_PTC_up %>% left_join(shared_PTC_genes, by = c("ENST.ID" = "ensembl_transcript_id")) 
-write_csv(shared_PTC_up,"sPTC_upregualted.csv")
+
 
 #Look at the PE isoforms that are upregulated
 full_PE_up = tibble(Sample = character())
@@ -3794,7 +3555,7 @@ for (i in all_GOI) {
          eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
            filter(ENST.ID %in% PE_NMD_only$ensembl_transcript_id & baseMean > 5 & log2FoldChange > 0.58 & padj < 0.05))
   full_PE_up = full_PE_up %>% full_join(eval(parse(text = paste0(i,"_PE_upregulated"))))
-  lax_sPTC_up = lax_PE_up %>% full_join(eval(parse(text = paste0(i,"_PE_lax_up"))))
+  lax_PE_up = lax_PE_up %>% full_join(eval(parse(text = paste0(i,"_PE_lax_up"))))
 }
 full_PE_count = full_PE_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
@@ -3808,7 +3569,8 @@ shared_PE_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id"
                           filters = "ensembl_transcript_id",
                           values = shared_PE_up$ENST.ID,
                           mart = ensembl)
-shared_PE_up = shared_PE_up %>% left_join(shared_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+shared_PE_up = shared_PE_up %>% left_join(shared_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  rename(Number_KD = count)
 write_csv(shared_PE_up,"PE_upregulated.csv")
 lax_PE_count = lax_PE_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Sample != "MAGOH") %>% 
   group_by(ENST.ID) %>% 
@@ -3817,109 +3579,18 @@ lax_PE_count = lax_PE_up %>% filter(Sample != "UPF1" | Sample != "EIF4A3" | Samp
             med_FC = median(log2FoldChange),
             avg_BM = mean(baseMean),
             avg_FC = mean(log2FoldChange))
-shared_lax_PE = lax_sPTC_count %>% filter(count > 5)
+shared_lax_PE = lax_PE_count %>% filter(count > 5)
 shared_lax_PE_genes = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","external_gene_name"),
                          filters = "ensembl_transcript_id",
                          values = shared_lax_PE$ENST.ID,
                          mart = ensembl)
-shared_lax_PE = shared_lax_PE %>% left_join(shared_lax_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+shared_lax_PE = shared_lax_PE %>% left_join(shared_lax_PE_genes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  rename(Number_KD = count)
 write_csv(shared_lax_PE,"lax_PE_upregulated.csv")
 
 
 
-####Look at Spliciing Inhibitor treatment####
-Splicing_inhibitors = c("Risdiplam","Plad")
-full_SI_MANE_PTC = tibble(Sample = character())
-full_SI_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
-for (i in Splicing_inhibitors) {
-  assign(paste0(i,"_alltrans"),
-         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
-  assign(paste0(i,"_alltrans_annotation"),
-         getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
-                              "transcript_mane_select","transcript_biotype"),
-               filters = "ensembl_transcript_id",
-               values = eval(parse(text = paste0(i,"_alltrans$ENST.ID"))),
-               mart = ensembl))
-  assign(paste0(i,"_alltrans"),
-         eval(parse(text = paste0(i,"_alltrans"))) %>% 
-           left_join(eval(parse(text = paste0(i,"_alltrans_annotation"))),
-                     by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
-           mutate(Sample = i))
-  assign(paste0(i,"_MANE_PTC"),
-         eval(parse(text = paste0(i,"_alltrans"))) %>% 
-           inner_join(all_PTCgenes, by = c("ENST.ID" = "transID")))
-  full_SI_MANE_PTC = full_SI_MANE_PTC %>% full_join(eval(parse(text = paste0(i,"_MANE_PTC"))))
-  assign(paste0(i,"_other_PTC_res"),
-         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "MANE"),
-                     exact = FALSE, alternative = "less"))
-  assign(paste0(i,"_MANE_PTC_res"),
-         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "Other"),
-                     exact = FALSE, alternative = "less"))
-  full_SI_PTC_res = full_SI_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
-                                               P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
-}
 
-#Look at MANE vs PTC vs Other
-SI_PTC_summary = full_SI_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
-                                                                           med = median(log2FoldChange)) %>% 
-  left_join(full_SI_PTC_res)
-
-
-SI_PTC = ggplot(data = full_SI_MANE_PTC)
-SI_PTC = SI_PTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitors),
-                                     y = log2FoldChange,
-                                     fill = factor(Type,levels = c("MANE","PTC","Other"))),
-             position = position_dodge2(width = 0.9),
-             width = 0.8,
-             outlier.shape = 21,
-             outlier.alpha = 0.5,
-             outlier.colour = NA,
-             linewidth = 1) +
-  scale_fill_manual(values = all_PTC_colors) +
-  scale_color_manual(values = all_PTC_colors) +
-  geom_text_repel(data = SI_PTC_summary,
-                  aes(x = factor(Sample,levels = Splicing_inhibitors),
-                      y = -3,
-                      color = factor(Type,levels = c("MANE","PTC","Other")),
-                      label = n),
-                  show.legend = F,
-                  position = position_dodge2(width = 0.8),
-                  size = 7,
-                  direction = "y",
-                  segment.color = NA) +
-  geom_label(data = SI_PTC_summary,
-             aes(x = factor(Sample,levels = Splicing_inhibitors),
-                 y = med,
-                 color = factor(Type,levels = c("MANE","PTC","Other")),
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 7) +
-  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
-            aes(x = factor(Sample,levels = Splicing_inhibitors),
-                y = 4,
-                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
-            size = 6,
-            color = "#663171") +
-  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
-            aes(x = factor(Sample,levels = Splicing_inhibitors),
-                y = 3,
-                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
-            size = 6,
-            color = "#6FC37D") +
-  labs(y = "Log2(Fold Change)",
-       fill = "Isoform Type",
-       caption = "PTC list isoforms") +
-  coord_cartesian(ylim = c(-4,4)) +
-  theme_bw()
-SI_PTC
-ggsave("Splicing_Inhibitor_sPTC_boxplot.pdf",
-       plot = SI_PTC,
-       width = 22,
-       height = 10,
-       units = "in",
-       device = pdf,
-       dpi = 300)
 
 
 #### Look at the gene level DE analysis ####
@@ -4072,3 +3743,670 @@ ggsave("Gene_level_AS_boxplot.pdf",
        device = pdf,
        dpi = 300)
 
+
+
+
+####Do the analysis using the SMG6/SMG7 depletion PTC list####
+SMG_PTC_all_isoforms <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/PTC_list_creation/SMG_PTC_all_isoforms.csv")
+SMG_PTC_alltrans = MF_alltrans %>% inner_join(SMG_PTC_all_isoforms, by = c("ENST.ID" = "ensembl_transcript_id"))
+SMG_PTC_MANE_alltrans = SMG_PTC_alltrans %>% filter(isoform != "Other")
+
+SMG_PTC_summary = SMG_PTC_alltrans %>% group_by(Sample,isoform) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+full_SMG_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in all_GOI) {
+  assign(paste0(i,"_other_SMG_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = SMG_PTC_alltrans %>% filter(Sample == i & isoform != "MANE"),
+                     exact = FALSE, alternative = "greater")) #Expect NMD to be greater than other
+  assign(paste0(i,"_MANE_SMG_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = SMG_PTC_alltrans %>% filter(Sample == i & isoform != "Other"),
+                     exact = FALSE, alternative = "less")) #expect MANE to be less than NMD
+  full_SMG_PTC_res = full_SMG_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_SMG_PTC_res$p.value"))),
+                                                  P_MANE = eval(parse(text = paste0(i,"_MANE_SMG_PTC_res$p.value"))))
+}
+SMG_PTC_summary = SMG_PTC_summary %>% left_join(full_SMG_PTC_res)
+view(SMG_PTC_summary)
+
+
+all_SMG_colors = c("MANE" = "#663171",
+                   "NMD" = "#EA7428",
+                   "Other" = "#6FC37D")
+SMG_PTC_boxplot = ggplot(data = SMG_PTC_alltrans)
+SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = factor(isoform, levels = c("MANE","NMD","Other"))),
+                                                 position = position_dodge(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1.5) +
+  scale_fill_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
+            aes(x = factor(Sample,levels = all_GOI),
+                y = 4,
+                label = paste0("P=",signif(P_MANE,digits = 3))),
+            size = 7,
+            show.legend = F,
+            color = "#663171",
+            direction = "y",
+            segment.color = NA) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
+            aes(x = factor(Sample,levels = all_GOI),
+                y = 3,
+                label = paste0("P=",signif(P_Other,digits = 3))),
+            size = 7,
+            show.legend = F,
+            color = "#6FC37D",
+            direction = "y",
+            segment.color = NA) +
+  geom_label(data = SMG_PTC_summary,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 4) +
+  scale_color_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_summary,
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = -3,
+                      label = n,
+                      color = isoform),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA)+
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()+
+  labs(x = "Depletion",
+       fill = "Isoform Type",
+       caption = "SMG6/SMG7 KD sPTC list")
+SMG_PTC_boxplot
+ggsave("SMG_PTC_all_isoforms_boxplot.pdf",
+       plot = SMG_PTC_boxplot,
+       device = pdf,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+SMG_PTC_boxplot_main = ggplot(data = SMG_PTC_alltrans %>% filter(Sample %in% Pres_KD))
+SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = factor(isoform, levels = c("MANE","NMD","Other"))),
+                                                 position = position_dodge(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1.5) +
+  scale_fill_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 4,
+                      label = paste0("P=",signif(P_MANE,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#663171",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 3,
+                      label = paste0("P=",signif(P_Other,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#6FC37D",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SMG_PTC_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 4) +
+  scale_color_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = -3,
+                      label = n,
+                      color = isoform),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA)+
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()+
+  labs(x = "Depletion",
+       fill = "Isoform Type",
+       caption = "SMG6/SMG7 KD sPTC list")
+SMG_PTC_boxplot_main
+ggsave("SMG_PTC_all_isoforms_boxplot_mainFig.pdf",
+       plot = SMG_PTC_boxplot_main,
+       device = pdf,
+       width = 22,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+SMG_PTC_MANE_summary = SMG_PTC_MANE_alltrans %>% group_by(Sample,isoform) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+full_SMG_PTC_MANE_res = tibble(Sample = character(),P = numeric())
+for (i in all_GOI) {
+  assign(paste0(i,"_SMG_PTC_MANE_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = SMG_PTC_MANE_alltrans %>% filter(Sample == i),
+                     exact = FALSE, alternative = "less")) #expect MANE to be less than NMD
+  full_SMG_PTC_MANE_res = full_SMG_PTC_MANE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_SMG_PTC_MANE_res$p.value"))))
+}
+SMG_PTC_MANE_summary = SMG_PTC_MANE_summary %>% left_join(full_SMG_PTC_MANE_res)
+view(SMG_PTC_MANE_summary)
+
+SMG_PTC_MANE_boxplot = ggplot(data = SMG_PTC_MANE_alltrans)
+SMG_PTC_MANE_boxplot = SMG_PTC_MANE_boxplot + geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = factor(isoform, levels = c("MANE","NMD","Other"))),
+                                                 position = position_dodge(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1.5) +
+  scale_fill_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD"),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 4,
+                      label = paste0("P=",signif(P,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "black",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SMG_PTC_MANE_summary,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 4) +
+  scale_color_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_MANE_summary,
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = -3,
+                      label = n,
+                      color = isoform),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA)+
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()+
+  labs(x = "Depletion",
+       fill = "Isoform Type",
+       caption = "SMG6/SMG7 KD sPTC list")
+SMG_PTC_MANE_boxplot
+ggsave("SMG_PTC_MANE_boxplot.pdf",
+       plot = SMG_PTC_MANE_boxplot,
+       device = pdf,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+SMG_PTC_MANE_boxplot_main = ggplot(data = SMG_PTC_MANE_alltrans %>% filter(Sample %in% Pres_KD))
+SMG_PTC_MANE_boxplot_main = SMG_PTC_MANE_boxplot_main + geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
+                                                               y = log2FoldChange,
+                                                               fill = factor(isoform, levels = c("MANE","NMD","Other"))),
+                                                           position = position_dodge(width = 0.9),
+                                                           width = 0.8,
+                                                           outlier.shape = 21,
+                                                           outlier.alpha = 0.5,
+                                                           outlier.colour = NA,
+                                                           linewidth = 1.5) +
+  scale_fill_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 4,
+                      label = paste0("P=",signif(P,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "black",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SMG_PTC_MANE_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 4) +
+  scale_color_manual(values = all_SMG_colors) +
+  geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = -3,
+                      label = n,
+                      color = isoform),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA)+
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()+
+  labs(x = "Depletion",
+       fill = "Isoform Type",
+       caption = "SMG6/SMG7 KD sPTC list")
+SMG_PTC_MANE_boxplot_main
+ggsave("SMG_PTC_MANE_boxplot_mainFig.pdf",
+       plot = SMG_PTC_MANE_boxplot_main,
+       device = pdf,
+       width = 22,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+##Make a heatmap of the P-value of each of the KDs for the summary figure
+#Rearainge the data table
+hm_df =SMG_PTC_MANE_summary %>% ungroup() %>% dplyr::select(Sample,P) %>% distinct(Sample,.keep_all = T) #Filter to just the data needed for the heatmap
+hm_df = hm_df %>% mutate(Sample = factor(Sample, levels = all_GOI)) %>% arrange(Sample) #Put them in the order of the other figures
+hm_df = hm_df %>% column_to_rownames(var="Sample") #Put the data in the format of pheatmap
+hm_small = hm_df %>% filter(P < 0.01)
+hm_large = hm_df %>% filter(P >= 0.01)
+#Make the breaks
+breaklist_small = c(seq(min(hm_df[hm_df != min(hm_df,na.rm = T)],na.rm = T),0.01,length.out = 1000))
+colors_small = colorRampPalette(c("#474ED7","#EC458D"))(999)
+breaklist_large = c(seq(0.01,1,length.out = 100))
+colors_large = colorRampPalette(c("#EC458D","#FFF1BF"))(99)
+#Try making two heatmaps, one going from min-0.05 and one from 0.05-1
+
+#Make heatmap
+HM_PTC_small = pheatmap(hm_small,
+                        color = colors_small,
+                        breaks = breaklist_small,
+                        na_col = "grey",
+                        cluster_rows = F,
+                        cluster_cols = F,
+                        display_numbers = T,
+                        number_format = "%.1e",
+                        number_color = "white")#heatmap going from the smallest P-value to 0.01
+ggsave("PTC_heatmap_smallP.pdf",
+       device = pdf,
+       plot = HM_PTC_small,
+       width = 3,
+       height = 6,
+       units = "in",
+       dpi = 300)
+HM_PTC_large = pheatmap(hm_large,
+                        color = colors_large,
+                        breaks = breaklist_large,
+                        na_col = "grey",
+                        cluster_rows = F,
+                        cluster_cols = F,
+                        display_numbers = T,
+                        number_format = "%.1e",
+                        number_color = "black")#heatmap going from the 0.01 to 1
+ggsave("PTC_heatmap_largeP.pdf",
+       device = pdf,
+       plot = HM_PTC_large,
+       width = 3,
+       height = 3,
+       units = "in",
+       dpi = 300)
+
+####Look at Spliciing Inhibitor treatment####
+Splicing_inhibitors = c("Risdiplam","Pladienolide","THZ531","Indisulam")
+full_SI_MANE_PTC = tibble(Sample = character())
+full_SI_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+full_SI_new_sPTC = tibble(Sample = character())
+full_SI_newPTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in Splicing_inhibitors) {
+  print(i)
+  assign(paste0(i,"_alltrans"),
+         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
+  assign(paste0(i,"_alltrans_annotation"),
+         getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                              "transcript_mane_select","transcript_biotype"),
+               filters = "ensembl_transcript_id",
+               values = eval(parse(text = paste0(i,"_alltrans$ENST.ID"))),
+               mart = ensembl))
+  assign(paste0(i,"_alltrans"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           left_join(eval(parse(text = paste0(i,"_alltrans_annotation"))),
+                     by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+           mutate(Sample = i))
+  assign(paste0(i,"_MANE_PTC"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           inner_join(all_PTCgenes, by = c("ENST.ID" = "transID")))
+  full_SI_MANE_PTC = full_SI_MANE_PTC %>% full_join(eval(parse(text = paste0(i,"_MANE_PTC"))))
+  assign(paste0(i,"_other_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "MANE"),
+                     exact = FALSE, alternative = "less"))
+  assign(paste0(i,"_MANE_PTC_res"),
+         wilcox.test(log2FoldChange ~ Type, data = eval(parse(text = (paste0(i,"_MANE_PTC")))) %>% filter(Type != "Other"),
+                     exact = FALSE, alternative = "less"))
+  full_SI_PTC_res = full_SI_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
+                                                P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
+  assign(paste0(i,"_new_sPTC"),
+         eval(parse(text = paste0(i,"_alltrans"))) %>% 
+           inner_join(SMG_PTC_all_isoforms, by = c("ENST.ID" = "ensembl_transcript_id",
+                                                   "ensembl_gene_id",
+                                                   "transcript_biotype",
+                                                   "external_gene_name")))
+  full_SI_new_sPTC = full_SI_new_sPTC %>% full_join(eval(parse(text = paste0(i,"_new_sPTC"))))
+  assign(paste0(i,"_new_other_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = eval(parse(text = (paste0(i,"_new_sPTC")))) %>% filter(isoform != "MANE"),
+                     exact = FALSE, alternative = "less"))
+  assign(paste0(i,"_new_MANE_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = eval(parse(text = (paste0(i,"_new_sPTC")))) %>% filter(isoform != "Other"),
+                     exact = FALSE, alternative = "less"))
+  full_SI_newPTC_res = full_SI_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
+                                                P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
+}
+
+#Look at MANE vs PTC vs Other
+SI_PTC_summary = full_SI_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
+                                                                           med = median(log2FoldChange)) %>% 
+  left_join(full_SI_PTC_res)
+
+
+SI_PTC = ggplot(data = full_SI_MANE_PTC)
+SI_PTC = SI_PTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitors),
+                                   y = log2FoldChange,
+                                   fill = factor(Type,levels = c("MANE","PTC","Other"))),
+                               position = position_dodge2(width = 0.9),
+                               width = 0.8,
+                               outlier.shape = 21,
+                               outlier.alpha = 0.5,
+                               outlier.colour = NA,
+                               linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = SI_PTC_summary,
+                  aes(x = factor(Sample,levels = Splicing_inhibitors),
+                      y = -3,
+                      color = factor(Type,levels = c("MANE","PTC","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SI_PTC_summary,
+             aes(x = factor(Sample,levels = Splicing_inhibitors),
+                 y = med,
+                 color = factor(Type,levels = c("MANE","PTC","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 7) +
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 4,
+                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
+            size = 6,
+            color = "#663171") +
+  geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 3,
+                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
+            size = 6,
+            color = "#6FC37D") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "PTC list isoforms",
+       x = "Splicing inhibitor") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+SI_PTC
+ggsave("Splicing_Inhibitor_sPTC_boxplot.pdf",
+       plot = SI_PTC,
+       width = 22,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#Look at  new MANE vs PTC vs Other
+full_SI_newPTC_res = full_SI_newPTC_res %>% distinct(Sample,.keep_all = T)
+SI_newPTC_summary = full_SI_new_sPTC %>% group_by(Sample,isoform) %>%  summarise(n = n(),
+                                                                           med = median(log2FoldChange)) %>% 
+  left_join(full_SI_newPTC_res)
+
+
+SI_newPTC = ggplot(data = full_SI_new_sPTC)
+SI_newPTC = SI_newPTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitors),
+                                   y = log2FoldChange,
+                                   fill = factor(isoform,levels = c("MANE","NMD","Other"))),
+                               position = position_dodge2(width = 0.9),
+                               width = 0.8,
+                               outlier.shape = 21,
+                               outlier.alpha = 0.5,
+                               outlier.colour = NA,
+                               linewidth = 1) +
+  scale_fill_manual(values = all_PTC_colors) +
+  scale_color_manual(values = all_PTC_colors) +
+  geom_text_repel(data = SI_newPTC_summary,
+                  aes(x = factor(Sample,levels = Splicing_inhibitors),
+                      y = -3,
+                      color = factor(isoform,levels = c("MANE","NMD","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = SI_newPTC_summary,
+             aes(x = factor(Sample,levels = Splicing_inhibitors),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 7) +
+  geom_text(data = SI_newPTC_summary %>% filter(isoform == "NMD"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 4,
+                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
+            size = 6,
+            color = "#663171") +
+  geom_text(data = SI_newPTC_summary %>% filter(isoform == "NMD"),
+            aes(x = factor(Sample,levels = Splicing_inhibitors),
+                y = 3,
+                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
+            size = 6,
+            color = "#6FC37D") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Isoform isoform",
+       caption = "PTC list isoforms",
+       x = "Splicing inhibitor") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+SI_newPTC
+ggsave("Splicing_Inhibitor_SMG_sPTC_boxplot.pdf",
+       plot = SI_newPTC,
+       width = 22,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+####Look at the effect of including novel isoforms in the kallisto transcriptome ####
+NK_full_alltrans = tibble(Sample = character())
+for (i in Pres_KD) {
+  print(i)
+  assign(paste0(i,"_NK_alltrans"),
+         read_csv(paste0(i,"_NK_alltrans.csv")))
+  assign(paste0(i,"_NK_alltrans"),
+         eval(parse(text = paste0(i,"_NK_alltrans"))) %>% mutate(Sample = i,
+                                                                 Category = case_when(str_detect(ENST.ID,"MST") ~ "Novel",
+                                                                                      str_detect(ENST.ID,"ENST") & str_detect(transcript_mane_select,"NM") ~ "MANE",
+                                                                                      TRUE ~ "Other")))
+  NK_full_alltrans = NK_full_alltrans %>% full_join(eval(parse(text = paste0(i,"_NK_alltrans"))))
+}
+NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(n = n(),
+                                                                                med = median(log2FoldChange))
+
+NK_colors = c("MANE" = "#713E5A",
+              "Other" = "#6FC37D",
+              "Novel" = "#DD7373")
+NK_full_boxplot = ggplot(NK_full_alltrans)
+NK_full_boxplot = NK_full_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                     y = log2FoldChange,
+                                                     fill = Category),
+                                                 position = position_dodge2(width = 0.9),
+                                                 width = 0.8,
+                                                 outlier.shape = 21,
+                                                 outlier.alpha = 0.5,
+                                                 outlier.colour = NA,
+                                                 linewidth = 1) +
+  scale_fill_manual(values = NK_colors) +
+  scale_color_manual(values = NK_colors) +
+  geom_text_repel(data = NK_full_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = Category,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = NK_full_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = Category,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform Type",
+       caption = "all isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+NK_full_boxplot
+ggsave("novel_kallisto_all_isoforms.pdf",
+       plot = NK_full_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+#Filter to only the genes on the NMD list
+NK_PTC_only = NK_full_alltrans %>% inner_join(SMG_PTC_all_isoforms, by = c("ENST.ID" = "ensembl_transcript_id",
+                                                                           "external_gene_name",
+                                                                           "ensembl_gene_id",
+                                                                           "transcript_biotype"))
+
+NK_PTC_summary = NK_PTC_only %>% group_by(Sample, isoform) %>% summarise(n = n(),
+                                                                      med = median(log2FoldChange))
+
+NK_PTC_colors = c("MANE" = "#663171",
+                  "NMD" = "#EA7428",
+                  "Other" = "#6FC37D",
+                  "novel NMD" = "#DD7373",
+                  "novel stable" = "#0075A2")
+NK_PTC_boxplot = ggplot(NK_PTC_only)
+NK_PTC_boxplot = NK_PTC_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                   y = log2FoldChange,
+                                                   fill = factor(isoform,levels = c("MANE","NMD","Other","novel NMD","novel stable"))),
+                                               position = position_dodge2(width = 0.9),
+                                               width = 0.8,
+                                               outlier.shape = 21,
+                                               outlier.alpha = 0.5,
+                                               outlier.colour = NA,
+                                               linewidth = 1) +
+  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other","novel NMD","novel stable")) +
+  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other","novel NMD","novel stable")) +
+  geom_text_repel(data = NK_PTC_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = factor(isoform,levels = c("MANE","NMD","Other","novel NMD","novel stable")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = NK_PTC_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other","novel NMD","novel stable")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform isoform",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+NK_PTC_boxplot
+ggsave("novel_kallisto_PTC_isoforms.pdf",
+       plot = NK_PTC_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+NK_no_novel = NK_PTC_only %>% filter(!str_detect(isoform,"novel"))
+NK_no_novel_summary = NK_no_novel %>% group_by(Sample, isoform) %>% summarise(n = n(),
+                                                                           med = median(log2FoldChange))
+NK_no_Novel_boxplot = ggplot(NK_no_novel)
+NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                                             y = log2FoldChange,
+                                                             fill = factor(isoform,levels = c("MANE","NMD","Other"))),
+                                                         position = position_dodge2(width = 0.9),
+                                                         width = 0.8,
+                                                         outlier.shape = 21,
+                                                         outlier.alpha = 0.5,
+                                                         outlier.colour = NA,
+                                                         linewidth = 1) +
+  scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other")) +
+  scale_color_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other")) +
+  geom_text_repel(data = NK_no_novel_summary,
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = factor(isoform,levels = c("MANE","NMD","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = NK_no_novel_summary,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  labs(x = "Depletion",
+       y = "Log2(Fold Change)",
+       fill = "Isoform isoform",
+       caption = "PTC list isoforms") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+NK_no_Novel_boxplot
+ggsave("NK_PTC_isoforms_no_novel.pdf",
+       plot = NK_no_Novel_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
