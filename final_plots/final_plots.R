@@ -4256,6 +4256,7 @@ for (i in Pres_KD) {
 NK_full_summary = NK_full_alltrans %>% group_by(Sample, Category) %>% summarise(n = n(),
                                                                                 med = median(log2FoldChange))
 
+
 NK_colors = c("MANE" = "#713E5A",
               "Other" = "#6FC37D",
               "Novel" = "#DD7373")
@@ -4312,6 +4313,19 @@ NK_PTC_only = NK_full_alltrans %>% inner_join(SMG_PTC_all_isoforms, by = c("ENST
 
 NK_PTC_summary = NK_PTC_only %>% group_by(Sample, isoform) %>% summarise(n = n(),
                                                                       med = median(log2FoldChange))
+full_NK_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in Pres_KD) {
+  assign(paste0(i,"_other_NK_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = NK_PTC_only %>% filter(Sample == i & isoform != "MANE"),
+                     exact = FALSE, alternative = "greater")) #Expect NMD to be greater than other
+  assign(paste0(i,"_MANE_NK_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = NK_PTC_only %>% filter(Sample == i & isoform != "Other"),
+                     exact = FALSE, alternative = "less")) #expect MANE to be less than NMD
+  full_NK_PTC_res = full_NK_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_NK_PTC_res$p.value"))),
+                                                P_MANE = eval(parse(text = paste0(i,"_MANE_NK_PTC_res$p.value"))))
+}
+NK_PTC_summary = NK_PTC_summary %>% left_join(full_NK_PTC_res)
+view(full_NK_PTC_res)
 
 NK_PTC_colors = c("MANE" = "#663171",
                   "NMD" = "#EA7428",
@@ -4378,6 +4392,24 @@ NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, 
                                                          linewidth = 1) +
   scale_fill_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other")) +
   scale_color_manual(values = NK_PTC_colors, limits = c("MANE","NMD","Other")) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 4,
+                      label = paste0("P=",signif(P_MANE,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#663171",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
+                  aes(x = factor(Sample,levels = all_GOI),
+                      y = 3,
+                      label = paste0("P=",signif(P_Other,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#6FC37D",
+                  direction = "y",
+                  segment.color = NA) +
   geom_text_repel(data = NK_no_novel_summary,
                   aes(x = factor(Sample, levels = all_GOI),
                       y = -3,
