@@ -2149,473 +2149,7 @@ ggsave("NMD_AS_filt_boxplot_mainFig.pdf",
        dpi = 300)
 
 
-####Analyze PRPF31 RP IPSC and RPE####
-Disease_sample = c("PRPF31_RP","PRPF8_RP")
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_PTC_alltrans"), read_csv(paste0(i,"_PTC_alltrans.csv")))
-  assign(paste0(i,"_PTC_alltrans"), eval(parse(text = paste0(i,"_PTC_alltrans"))) %>% mutate(Sample = paste0(i)) %>% 
-           dplyr::select(2:8,10:12)) 
-}
-Disease_PTC = PRPF31_RP_PTC_alltrans %>% full_join(PRPF8_RP_PTC_alltrans)
-Disease_PTC_sum = Disease_PTC %>% group_by(PTC,Sample) %>%
-  summarise(med = median(log2FoldChange),
-            mean = mean(log2FoldChange),
-            n = n()) %>% 
-  mutate(PTC = str_replace(PTC,"FALSE","MANE"),
-         PTC = str_replace(PTC, "TRUE", "PTC"))
-all_DIS_res = tibble(Sample = character(),P = numeric())
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_PTC_res"),
-         wilcox.test(log2FoldChange ~ PTC, data = Disease_PTC %>% filter(Sample == i),
-                     exact = FALSE, alternative = "less"))
-  all_DIS_res = all_DIS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PTC_res$p.value"))))
-}
-Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
-write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
 
-DIS_boxplot = ggplot(data = Disease_PTC)
-DIS_boxplot = DIS_boxplot + 
-  geom_boxplot(aes(x = Sample,
-                   y = log2FoldChange,
-                   fill = PTC),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = colors, labels = c("FALSE" = "MANE",
-                                                "TRUE" = "PTC")) +
-  scale_color_manual(values = colors) +
-  geom_text(data = Disease_PTC_sum,
-             aes(x = Sample,
-                 y = 3.5,
-                 label = signif(P,digits = 3)),
-             size = 7,
-             show.legend = F,
-            color = "black")+
-  geom_label(data = Disease_PTC_sum,
-             aes(x = Sample,
-                 y = med,
-                 color = PTC,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text_repel(data = Disease_PTC_sum,
-             aes(x = Sample,
-                 y = -3,
-                 color = PTC,
-                 label = n),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 7,
-             direction = "y",
-             segment.color = NA) +
-  theme_bw() + 
-  labs(x = "Sample",
-       y = "Log2 Fold Change",
-       fill = "Gene Type")+
-  coord_cartesian(y = c(-4,4))
-DIS_boxplot
-ggsave("Disease_boxplot_FC_plot.pdf",
-       device = pdf,
-       plot = DIS_boxplot,
-       width = 10,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-##Volcano plots of Disease PTC
-Disease_PTC_vol_data = Disease_PTC %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
-                                                                    log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
-                                                                    TRUE ~ "NS"))
-Disease_PTC_vol_labs = Disease_PTC_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
-write_csv(Disease_PTC_vol_labs,"top10_sig_Disease_PTC.csv")
-
-vol_colors = c("UP" = "#F5BC00",
-               "DOWN" = "#840B2D",
-               "NS" = "#9D9C9D")
-Disease_PTC_vol = ggplot(data = Disease_PTC_vol_data)
-Disease_PTC_vol = Disease_PTC_vol + geom_vline(xintercept = c(-0.58,0.58),
-                                               color = "grey",
-                                               linetype = "dashed") +
-  geom_hline(yintercept = -log10(0.05),
-             color = "grey",
-             linetype = "dashed") +
-  geom_point(aes(x = log2FoldChange,
-                 y = -log10(padj),
-                 color = Sig),
-             alpha = 0.5) +
-  geom_label_repel(data = Disease_PTC_vol_labs,
-                   aes(x = log2FoldChange,
-                       y = -log10(padj),
-                       color = Sig,
-                       label = Gene),
-                   show.legend = FALSE,
-                   max.overlaps = NA) +
-  scale_color_manual(values = vol_colors)+
-  labs(title = "Disease vs WT",
-       y = "-Log10(padj)",
-       x = "Log2(Fold Change)",
-       color = "Significance",
-       caption = "PTC gene transcripts") +
-  facet_wrap(facets = vars(Sample)) +
-  theme_bw()
-Disease_PTC_vol
-ggsave("Disease_PTC_volcano.pdf",
-       Disease_PTC_vol,
-       width = 20,
-       height = 10,
-       units = "in",
-       dpi = 300,
-       device = pdf)
-
-##Look at the disease effect on PE##
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_full_alltrans"),
-         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
-  assign(paste0(i,"_full_alltrans"),
-         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
-           mutate(Sample = i))
-}
-DIS_alltrans = PRPF31_RP_full_alltrans %>% full_join(PRPF8_RP_full_alltrans)
-
-## Filter the log2FC data to only transcripts in the PE/MANE list
-PE_DIS = DIS_alltrans %>% filter(ENST.ID %in% PE_transcripts$ensembl_transcript_id)
-PE_DIS = PE_DIS %>% left_join(PE_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
-PE_DIS_sum = PE_DIS %>% group_by(Sample,isoform) %>%
-  summarise(n = n(),
-            genes = n_distinct(ensembl_gene_id),
-            Med = median(log2FoldChange, na.rm = T),
-            quart = quantile(log2FoldChange, 0.5)) #calculate the summary stats for labeling the plots
-PE_DIS_sum = PE_DIS_sum %>% group_by(Sample) %>% mutate(Total = sum(n),
-                                                        Total_genes = sum(genes))
-write_csv(PE_DIS,"Disease_PE_transcripts.csv")
-
-## Calculates the P-value for each plot
-DIS_PE_res = tibble(Sample = as.character(), P = as.numeric())
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_PE"), PE_DIS %>% filter(Sample == i))
-  assign(paste0(i,"_res"), wilcox.test(log2FoldChange ~ isoform, data = eval(parse(text = paste0(i,"_PE"))),
-                                       exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
-  DIS_PE_res = DIS_PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_res$p.value"))))
-}
-PE_DIS_sum = PE_DIS_sum %>% left_join(DIS_PE_res, by = "Sample")
-
-
-DIS_PE_boxplot = ggplot(data = PE_DIS)
-DIS_PE_boxplot = DIS_PE_boxplot + 
-  geom_boxplot(aes(x =Sample,
-                   y = log2FoldChange,
-                   fill = isoform),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = PE_Colors) +
-  scale_color_manual(values = PE_Colors)+
-  geom_text(data = PE_DIS_sum %>% filter(isoform == "MANE"),
-             aes(x = Sample,
-                 y = 3,
-                 label = signif(P,digits = 3)),
-             size = 7,
-            show.legend = F,
-            color = "black")+
-  geom_label(data = PE_DIS_sum,
-             aes(x = Sample,
-                 y = Med,
-                 color = isoform,
-                 label = round(Med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text_repel(data = PE_DIS_sum,
-             aes(x = Sample,
-                 y = -2.5,
-                 color = isoform,
-                 label = n),
-             show.legend = F,
-             position = position_dodge2(width = 0.9),
-             size = 7,
-             direction = "y",
-             segment.color = NA) +
-  theme_bw() + 
-  labs(x = "Sample",
-       y = "Log2 Fold Change",
-       fill = "Isoform Type")+
-  coord_cartesian(y = c(-4,4))
-DIS_PE_boxplot
-ggsave("Disease_PE_boxplot.pdf",
-       device = pdf,
-       plot = DIS_PE_boxplot,
-       width = 10,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-##Volcano plots of Disease PE
-Disease_PE_vol_data = PE_DIS %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
-                                                              log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
-                                                              TRUE ~ "NS"))
-Disease_PE_vol_labs = Disease_PE_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
-write_csv(Disease_PE_vol_labs,"top10_sig_Disease_PE.csv")
-
-Disease_PE_vol = ggplot(data = Disease_PE_vol_data)
-Disease_PE_vol = Disease_PE_vol + geom_vline(xintercept = c(-0.58,0.58),
-                                               color = "grey",
-                                               linetype = "dashed") +
-  geom_hline(yintercept = -log10(0.05),
-             color = "grey",
-             linetype = "dashed") +
-  geom_point(aes(x = log2FoldChange,
-                 y = -log10(padj),
-                 color = Sig),
-             alpha = 0.5) +
-  geom_label_repel(data = Disease_PE_vol_labs,
-                   aes(x = log2FoldChange,
-                       y = -log10(padj),
-                       color = Sig,
-                       label = external_gene_name),
-                   show.legend = FALSE,
-                   max.overlaps = NA) +
-  scale_color_manual(values = vol_colors)+
-  labs(title = "Disease vs WT",
-       y = "-Log10(padj)",
-       x = "Log2(Fold Change)",
-       color = "Significance",
-       caption = "PE gene transcripts") +
-  facet_wrap(facets = vars(Sample)) +
-  theme_bw()
-Disease_PE_vol
-ggsave("Disease_PE_volcano.pdf",
-       Disease_PE_vol,
-       width = 20,
-       height = 10,
-       units = "in",
-       dpi = 300,
-       device = pdf)
-
-#Volcano plot of all transcripts#
-Disease_all_vol_data = DIS_alltrans %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
-                                                        log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
-                                                        TRUE ~ "NS"))
-Dis_all_genes = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id","transcript_biotype",
-                                     "transcript_mane_select"),
-                      filters = "ensembl_transcript_id",
-                      values = Disease_all_vol_data$ENST.ID,
-                      mart = ensembl)
-Dis_all_genes = Dis_all_genes %>% distinct(ensembl_transcript_id, .keep_all = TRUE)
-Disease_all_vol_data = Disease_all_vol_data %>% left_join(Dis_all_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
-Disease_all_vol_labs = Disease_all_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
-write_csv(Disease_all_vol_labs,"top10_sig_Disease_all_transcripts.csv")
-
-Disease_all_vol = ggplot(data = Disease_all_vol_data)
-Disease_all_vol = Disease_all_vol + geom_vline(xintercept = c(-0.58,0.58),
-                                             color = "grey",
-                                             linetype = "dashed") +
-  geom_hline(yintercept = -log10(0.05),
-             color = "grey",
-             linetype = "dashed") +
-  geom_point(aes(x = log2FoldChange,
-                 y = -log10(padj),
-                 color = Sig),
-             alpha = 0.5) +
-  geom_label_repel(data = Disease_PTC_vol_labs,
-                   aes(x = log2FoldChange,
-                       y = -log10(padj),
-                       label = Gene),
-                   show.legend = FALSE,
-                   color = "black",
-                   max.overlaps = NA) +
-  geom_label_repel(data = Disease_all_vol_labs,
-                   aes(x = log2FoldChange,
-                       y = -log10(padj),
-                       label = external_gene_name,
-                       color = Sig),
-                   show.legend = FALSE,
-                   max.overlaps = NA) +
-  scale_color_manual(values = vol_colors)+
-  labs(title = "Disease vs WT",
-       y = "-Log10(padj)",
-       x = "Log2(Fold Change)",
-       color = "Significance",
-       caption = "all transcripts") +
-  facet_wrap(facets = vars(Sample)) +
-  theme_bw()
-Disease_all_vol
-ggsave("Disease_all_volcano.pdf",
-       Disease_all_vol,
-       width = 30,
-       height = 10,
-       units = "in",
-       dpi = 300,
-       device = pdf)
-
-## Look at the no NMD transcripts in the disease samples##
-Dis_no_NMD = DIS_alltrans %>% inner_join(MS_noNMD_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
-Dis_no_NMD_sum = Dis_no_NMD %>% group_by(Sample,isoform) %>% 
-  summarise(n = n(),
-            med = median(log2FoldChange))
-Dis_no_NMD_res = tibble(Sample = character(), P = numeric())
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_noNMD_res"), wilcox.test(log2FoldChange ~ isoform, data = Dis_no_NMD %>% filter(Sample == i),
-                                       exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
-  Dis_no_NMD_res = Dis_no_NMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noNMD_res$p.value"))))
-}
-Dis_no_NMD_sum = Dis_no_NMD_sum %>% left_join(Dis_no_NMD_res, by = "Sample")
-
-DIS_no_NMD_boxplot = ggplot(data = Dis_no_NMD)
-DIS_no_NMD_boxplot = DIS_no_NMD_boxplot + 
-  geom_boxplot(aes(x =Sample,
-                   y = log2FoldChange,
-                   fill = isoform),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = noNMD_colors) +
-  scale_color_manual(values = noNMD_colors)+
-  geom_text(data = Dis_no_NMD_sum %>% filter(isoform == "MANE"),
-            aes(x = Sample,
-                y = 3,
-                label = signif(P,digits = 3)),
-            size = 7,
-            show.legend = F,
-            color = "black")+
-  geom_label(data = Dis_no_NMD_sum,
-             aes(x = Sample,
-                 y = med,
-                 color = isoform,
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text_repel(data = Dis_no_NMD_sum,
-            aes(x = Sample,
-                y = -2.5,
-                color = isoform,
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 7,
-            direction = "y",
-            segment.color = NA) +
-  theme_bw() + 
-  labs(x = "Sample",
-       y = "Log2 Fold Change",
-       fill = "Isoform Type")+
-  coord_cartesian(y = c(-4,4))
-DIS_no_NMD_boxplot
-ggsave("Disease_no_NMD_boxplot.pdf",
-       device = pdf,
-       plot = DIS_no_NMD_boxplot,
-       width = 10,
-       height = 10,
-       units = "in",
-       dpi = 300)
-
-#Look at the AS genes in the disease sample
-all_disease_AS = tibble(Sample = character())
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_AS_events"),
-         read_csv(paste0(i,"_annotated_AS.csv")))
-  assign(paste0(i,"_alltrans_genes"),
-         getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_mane_select"),
-               filters = "ensembl_transcript_id",
-               values = eval(parse(text = paste0(i,"_full_alltrans$ENST.ID"))),
-               mart = ensembl))
-  assign(paste0(i,"_AS_alltrans"),
-         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
-           left_join(eval(parse(text = paste0(i,"_alltrans_genes"))),
-                     by = c("ENST.ID" = "ensembl_transcript_id")))
-  assign(paste0(i,"_AS_alltrans"),
-         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
-           mutate(Gene_type = if_else(ensembl_gene_id %in% eval(parse(text = paste0(i,"_AS_events$GeneID"))),
-                                      "AS",
-                                      "non-AS"),
-                  Transcript_type = if_else(str_detect(transcript_mane_select,"NM"),
-                                            "MANE",
-                                            "Other")))
-  all_disease_AS = all_disease_AS %>% full_join(eval(parse(text = paste0(i,"_AS_alltrans"))))
-}
-disease_AS_sum = all_disease_AS %>% group_by(Sample,Gene_type) %>% 
-  filter(Transcript_type == "MANE") %>% 
-  summarise(n = n(),
-            med = median(log2FoldChange))
-disease_AS_res = tibble(Sample = character(), P = numeric())
-for (i in Disease_sample) {
-  print(i)
-  assign(paste0(i,"_AS_res"), wilcox.test(log2FoldChange ~ Gene_type, data = all_disease_AS %>% filter(Sample == i & Transcript_type == "MANE"),
-                                             exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
-  disease_AS_res = disease_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_AS_res$p.value"))))
-}
-disease_AS_sum = disease_AS_sum %>% left_join(disease_AS_res, by = "Sample")
-
-disease_AS_colors = c("AS" = "#6DC5B9",
-                      "non-AS" = "#DE4D86")
-disease_AS_boxplot = ggplot(data = all_disease_AS %>% filter(Transcript_type == "MANE"))
-disease_AS_boxplot = disease_AS_boxplot + 
-  geom_boxplot(aes(x =Sample,
-                   y = log2FoldChange,
-                   fill = factor(Gene_type,levels = c("non-AS","AS"))),
-               position = position_dodge2(width = 0.9),
-               width = 0.8,
-               outlier.shape = 21,
-               outlier.alpha = 0.5,
-               outlier.colour = NA,
-               linewidth = 1) +
-  scale_fill_manual(values = disease_AS_colors,labels = c("non-AS" = "no AS",
-                                                          "AS" = "AS genes")) +
-  scale_color_manual(values = disease_AS_colors)+
-  geom_text(data = disease_AS_sum %>% filter(Gene_type == "AS"),
-            aes(x = Sample,
-                y = 3,
-                label = signif(P,digits = 3)),
-            size = 7,
-            show.legend = F,
-            color = "black")+
-  geom_label(data = disease_AS_sum,
-             aes(x = Sample,
-                 y = med,
-                 color = factor(Gene_type,levels = c("non-AS","AS")),
-                 label = round(med, digits = 3)),
-             show.legend = F,
-             position = position_dodge2(width = 0.8),
-             size = 5) +
-  geom_text_repel(data = disease_AS_sum,
-            aes(x = Sample,
-                y = -2.5,
-                color = factor(Gene_type,levels = c("non-AS","AS")),
-                label = n),
-            show.legend = F,
-            position = position_dodge2(width = 0.9),
-            size = 7,
-            direction = "y",
-            segment.color = NA) +
-  theme_bw() + 
-  labs(x = "Sample",
-       y = "Log2 Fold Change",
-       fill = "Gene Type")+
-  coord_cartesian(y = c(-4,4))
-disease_AS_boxplot
-ggsave("Disease_AS_boxplot.pdf",
-       device = pdf,
-       plot = disease_AS_boxplot,
-       width = 10,
-       height = 10,
-       units = "in",
-       dpi = 300)
 
 
 ####Look at fold change of non-PTC NMD targets####
@@ -4441,4 +3975,475 @@ ggsave("NK_PTC_isoforms_no_novel.pdf",
        height = 10,
        units = "in",
        device = pdf,
+       dpi = 300)
+####Analyze PRPF31 RP IPSC and RPE####
+Disease_sample = c("PRPF31_RP","PRPF8_RP")
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_full_alltrans"),
+         read_csv(paste0(i,"_DBfilt_alltrans.csv")))
+  assign(paste0(i,"_full_alltrans"),
+         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
+           mutate(Sample = i))
+}
+DIS_alltrans = PRPF31_RP_full_alltrans %>% full_join(PRPF8_RP_full_alltrans)
+Disease_PTC = DIS_alltrans %>% inner_join(SMG_PTC_all_isoforms, by = c("ENST.ID" = "ensembl_transcript_id"))
+Disease_PTC_sum = Disease_PTC %>% group_by(isoform,Sample) %>%
+  summarise(med = median(log2FoldChange),
+            n = n()) 
+all_DIS_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
+for (i in Disease_sample) {
+  assign(paste0(i,"_other_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = Disease_PTC %>% filter(Sample == i & isoform != "MANE"),
+                     exact = FALSE, alternative = "greater")) #Expect NMD to be greater than other
+  assign(paste0(i,"_MANE_PTC_res"),
+         wilcox.test(log2FoldChange ~ isoform, data = Disease_PTC %>% filter(Sample == i & isoform != "Other"),
+                     exact = FALSE, alternative = "less")) #expect MANE to be less than NMD
+  all_DIS_res = all_DIS_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
+                                                P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
+}
+Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
+write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
+
+DIS_boxplot = ggplot(data = Disease_PTC)
+DIS_boxplot = DIS_boxplot + 
+  geom_boxplot(aes(x = Sample,
+                   y = log2FoldChange,
+                   fill = isoform),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = all_SMG_colors) +
+  scale_color_manual(values = all_SMG_colors) +
+  geom_text_repel(data = Disease_PTC_sum %>% filter(isoform == "NMD"),
+                  aes(x = factor(Sample,levels = Disease_sample),
+                      y = 4,
+                      label = paste0("P=",signif(P_MANE,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#663171",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_text_repel(data = Disease_PTC_sum %>% filter(isoform == "NMD"),
+                  aes(x = factor(Sample,levels = Disease_sample),
+                      y = 3,
+                      label = paste0("P=",signif(P_Other,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#6FC37D",
+                  direction = "y",
+                  segment.color = NA) +
+  geom_text_repel(data = Disease_PTC_sum,
+                  aes(x = factor(Sample, levels = Disease_sample),
+                      y = -3,
+                      color = factor(isoform,levels = c("MANE","NMD","Other")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = Disease_PTC_sum,
+             aes(x = factor(Sample, levels = Disease_sample),
+                 y = med,
+                 color = factor(isoform,levels = c("MANE","NMD","Other")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Isoform")+
+  coord_cartesian(y = c(-4,4))
+DIS_boxplot
+ggsave("Disease_boxplot_FC_plot.pdf",
+       device = pdf,
+       plot = DIS_boxplot,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+##Volcano plots of Disease PTC
+Disease_PTC_vol_data = Disease_PTC %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                              log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                              TRUE ~ "NS"))
+Disease_PTC_vol_labs = Disease_PTC_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PTC_vol_labs,"top10_sig_Disease_PTC.csv")
+
+vol_colors = c("UP" = "#F5BC00",
+               "DOWN" = "#840B2D",
+               "NS" = "#9D9C9D")
+Disease_PTC_vol = ggplot(data = Disease_PTC_vol_data)
+Disease_PTC_vol = Disease_PTC_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig,
+                 shape = isoform),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = external_gene_name),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PTC gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PTC_vol
+ggsave("Disease_PTC_volcano.pdf",
+       Disease_PTC_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+##Look at the disease effect on PE##
+## Filter the log2FC data to only transcripts in the PE/MANE list
+PE_DIS = DIS_alltrans %>% filter(ENST.ID %in% PE_transcripts$ensembl_transcript_id)
+PE_DIS = PE_DIS %>% left_join(PE_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
+PE_DIS_sum = PE_DIS %>% group_by(Sample,isoform) %>%
+  summarise(n = n(),
+            genes = n_distinct(ensembl_gene_id),
+            Med = median(log2FoldChange, na.rm = T),
+            quart = quantile(log2FoldChange, 0.5)) #calculate the summary stats for labeling the plots
+PE_DIS_sum = PE_DIS_sum %>% group_by(Sample) %>% mutate(Total = sum(n),
+                                                        Total_genes = sum(genes))
+write_csv(PE_DIS,"Disease_PE_transcripts.csv")
+
+## Calculates the P-value for each plot
+DIS_PE_res = tibble(Sample = as.character(), P = as.numeric())
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_PE"), PE_DIS %>% filter(Sample == i))
+  assign(paste0(i,"_res"), wilcox.test(log2FoldChange ~ isoform, data = eval(parse(text = paste0(i,"_PE"))),
+                                       exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
+  DIS_PE_res = DIS_PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_res$p.value"))))
+}
+PE_DIS_sum = PE_DIS_sum %>% left_join(DIS_PE_res, by = "Sample")
+
+
+DIS_PE_boxplot = ggplot(data = PE_DIS)
+DIS_PE_boxplot = DIS_PE_boxplot + 
+  geom_boxplot(aes(x =Sample,
+                   y = log2FoldChange,
+                   fill = isoform),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = PE_Colors) +
+  scale_color_manual(values = PE_Colors)+
+  geom_text(data = PE_DIS_sum %>% filter(isoform == "MANE"),
+            aes(x = Sample,
+                y = 3,
+                label = signif(P,digits = 3)),
+            size = 7,
+            show.legend = F,
+            color = "black")+
+  geom_label(data = PE_DIS_sum,
+             aes(x = Sample,
+                 y = Med,
+                 color = isoform,
+                 label = round(Med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text_repel(data = PE_DIS_sum,
+                  aes(x = Sample,
+                      y = -2.5,
+                      color = isoform,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Isoform Type")+
+  coord_cartesian(y = c(-4,4))
+DIS_PE_boxplot
+ggsave("Disease_PE_boxplot.pdf",
+       device = pdf,
+       plot = DIS_PE_boxplot,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+##Volcano plots of Disease PE
+Disease_PE_vol_data = PE_DIS %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                        log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                        TRUE ~ "NS"))
+Disease_PE_vol_labs = Disease_PE_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_PE_vol_labs,"top10_sig_Disease_PE.csv")
+
+Disease_PE_vol = ggplot(data = Disease_PE_vol_data)
+Disease_PE_vol = Disease_PE_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                             color = "grey",
+                                             linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PE_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       color = Sig,
+                       label = external_gene_name),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "PE gene transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_PE_vol
+ggsave("Disease_PE_volcano.pdf",
+       Disease_PE_vol,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+#Volcano plot of all transcripts#
+Disease_all_vol_data = DIS_alltrans %>% mutate(Sig = case_when(log2FoldChange > 0.58 & padj < 0.05 ~ "UP",
+                                                               log2FoldChange < -0.58 & padj < 0.05 ~ "DOWN",
+                                                               TRUE ~ "NS"))
+Dis_all_genes = getBM(attributes = c("ensembl_gene_id","external_gene_name","ensembl_transcript_id","transcript_biotype",
+                                     "transcript_mane_select"),
+                      filters = "ensembl_transcript_id",
+                      values = Disease_all_vol_data$ENST.ID,
+                      mart = ensembl)
+Dis_all_genes = Dis_all_genes %>% distinct(ensembl_transcript_id, .keep_all = TRUE)
+Disease_all_vol_data = Disease_all_vol_data %>% left_join(Dis_all_genes, by = c("ENST.ID" = "ensembl_transcript_id"))
+Disease_all_vol_labs = Disease_all_vol_data %>% group_by(Sig,Sample) %>% slice_min(padj, n = 10) %>% filter(Sig != "NS")
+write_csv(Disease_all_vol_labs,"top10_sig_Disease_all_transcripts.csv")
+
+Disease_all_vol = ggplot(data = Disease_all_vol_data)
+Disease_all_vol = Disease_all_vol + geom_vline(xintercept = c(-0.58,0.58),
+                                               color = "grey",
+                                               linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05),
+             color = "grey",
+             linetype = "dashed") +
+  geom_point(aes(x = log2FoldChange,
+                 y = -log10(padj),
+                 color = Sig),
+             alpha = 0.5) +
+  geom_label_repel(data = Disease_PTC_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = Gene),
+                   show.legend = FALSE,
+                   color = "black",
+                   max.overlaps = NA) +
+  geom_label_repel(data = Disease_all_vol_labs,
+                   aes(x = log2FoldChange,
+                       y = -log10(padj),
+                       label = external_gene_name,
+                       color = Sig),
+                   show.legend = FALSE,
+                   max.overlaps = NA) +
+  scale_color_manual(values = vol_colors)+
+  labs(title = "Disease vs WT",
+       y = "-Log10(padj)",
+       x = "Log2(Fold Change)",
+       color = "Significance",
+       caption = "all transcripts") +
+  facet_wrap(facets = vars(Sample)) +
+  theme_bw()
+Disease_all_vol
+ggsave("Disease_all_volcano.pdf",
+       Disease_all_vol,
+       width = 30,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+## Look at the no NMD transcripts in the disease samples##
+Dis_no_NMD = DIS_alltrans %>% inner_join(MS_noNMD_transcripts, by = c("ENST.ID" = "ensembl_transcript_id"))
+Dis_no_NMD_sum = Dis_no_NMD %>% group_by(Sample,isoform) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+Dis_no_NMD_res = tibble(Sample = character(), P = numeric())
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_noNMD_res"), wilcox.test(log2FoldChange ~ isoform, data = Dis_no_NMD %>% filter(Sample == i),
+                                             exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
+  Dis_no_NMD_res = Dis_no_NMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noNMD_res$p.value"))))
+}
+Dis_no_NMD_sum = Dis_no_NMD_sum %>% left_join(Dis_no_NMD_res, by = "Sample")
+
+DIS_no_NMD_boxplot = ggplot(data = Dis_no_NMD)
+DIS_no_NMD_boxplot = DIS_no_NMD_boxplot + 
+  geom_boxplot(aes(x =Sample,
+                   y = log2FoldChange,
+                   fill = isoform),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = noNMD_colors) +
+  scale_color_manual(values = noNMD_colors)+
+  geom_text(data = Dis_no_NMD_sum %>% filter(isoform == "MANE"),
+            aes(x = Sample,
+                y = 3,
+                label = signif(P,digits = 3)),
+            size = 7,
+            show.legend = F,
+            color = "black")+
+  geom_label(data = Dis_no_NMD_sum,
+             aes(x = Sample,
+                 y = med,
+                 color = isoform,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text_repel(data = Dis_no_NMD_sum,
+                  aes(x = Sample,
+                      y = -2.5,
+                      color = isoform,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Isoform Type")+
+  coord_cartesian(y = c(-4,4))
+DIS_no_NMD_boxplot
+ggsave("Disease_no_NMD_boxplot.pdf",
+       device = pdf,
+       plot = DIS_no_NMD_boxplot,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Look at the AS genes in the disease sample
+all_disease_AS = tibble(Sample = character())
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_AS_events"),
+         read_csv(paste0(i,"_annotated_AS.csv")))
+  assign(paste0(i,"_alltrans_genes"),
+         getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_mane_select"),
+               filters = "ensembl_transcript_id",
+               values = eval(parse(text = paste0(i,"_full_alltrans$ENST.ID"))),
+               mart = ensembl))
+  assign(paste0(i,"_AS_alltrans"),
+         eval(parse(text = paste0(i,"_full_alltrans"))) %>% 
+           left_join(eval(parse(text = paste0(i,"_alltrans_genes"))),
+                     by = c("ENST.ID" = "ensembl_transcript_id")))
+  assign(paste0(i,"_AS_alltrans"),
+         eval(parse(text = paste0(i,"_AS_alltrans"))) %>% 
+           mutate(Gene_type = if_else(ensembl_gene_id %in% eval(parse(text = paste0(i,"_AS_events$GeneID"))),
+                                      "AS",
+                                      "non-AS"),
+                  Transcript_type = if_else(str_detect(transcript_mane_select,"NM"),
+                                            "MANE",
+                                            "Other")))
+  all_disease_AS = all_disease_AS %>% full_join(eval(parse(text = paste0(i,"_AS_alltrans"))))
+}
+disease_AS_sum = all_disease_AS %>% group_by(Sample,Gene_type) %>% 
+  filter(Transcript_type == "MANE") %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange))
+disease_AS_res = tibble(Sample = character(), P = numeric())
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_AS_res"), wilcox.test(log2FoldChange ~ Gene_type, data = all_disease_AS %>% filter(Sample == i & Transcript_type == "MANE"),
+                                          exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
+  disease_AS_res = disease_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_AS_res$p.value"))))
+}
+disease_AS_sum = disease_AS_sum %>% left_join(disease_AS_res, by = "Sample")
+
+disease_AS_colors = c("AS" = "#6DC5B9",
+                      "non-AS" = "#DE4D86")
+disease_AS_boxplot = ggplot(data = all_disease_AS %>% filter(Transcript_type == "MANE"))
+disease_AS_boxplot = disease_AS_boxplot + 
+  geom_boxplot(aes(x =Sample,
+                   y = log2FoldChange,
+                   fill = factor(Gene_type,levels = c("non-AS","AS"))),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = disease_AS_colors,labels = c("non-AS" = "no AS",
+                                                          "AS" = "AS genes")) +
+  scale_color_manual(values = disease_AS_colors)+
+  geom_text(data = disease_AS_sum %>% filter(Gene_type == "AS"),
+            aes(x = Sample,
+                y = 3,
+                label = signif(P,digits = 3)),
+            size = 7,
+            show.legend = F,
+            color = "black")+
+  geom_label(data = disease_AS_sum,
+             aes(x = Sample,
+                 y = med,
+                 color = factor(Gene_type,levels = c("non-AS","AS")),
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text_repel(data = disease_AS_sum,
+                  aes(x = Sample,
+                      y = -2.5,
+                      color = factor(Gene_type,levels = c("non-AS","AS")),
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type")+
+  coord_cartesian(y = c(-4,4))
+disease_AS_boxplot
+ggsave("Disease_AS_boxplot.pdf",
+       device = pdf,
+       plot = disease_AS_boxplot,
+       width = 10,
+       height = 10,
+       units = "in",
        dpi = 300)
