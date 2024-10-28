@@ -78,7 +78,8 @@ anno_genes = counts %>% filter(str_detect(ENSTID,"ENST")) %>%
   left_join(listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
 CDC5L_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_CDC5L_ISAR/CDC5L_novel_iso_features.csv")
 novel_genes = counts %>% filter(str_detect(ENSTID,"MST")) %>% 
-  full_join(CDC5L_novel_iso_features, by = c("ENSTID" = "isoform_id"))
+  left_join(CDC5L_novel_iso_features, by = c("ENSTID" = "isoform_id")) %>% 
+  filter(!is.na(PTC))
 full_genelist = anno_genes %>% full_join(novel_genes, by = c("ENSTID",
                                                              "ensembl_gene_id" = "gene_id",
                                                              "external_gene_name" = "gene_name",
@@ -333,7 +334,4 @@ write.csv(CDC5L_SC_impact, "CDC5L_splicing_impact.csv",row.names = FALSE)
 
 #### Pull the TPM of genes for the NMD TPM graph ####
 #Check WT and KD are refering to the right columns in full_genelist
-PTC_tpm = full_genelist %>% right_join(sPTC_MANE, by = c("ENSTID" = "transID"))
-PTC_tpm = PTC_tpm %>% select(5,6,8:10,14) %>% rename(PTC = PTC.y)
-write_csv(PTC_tpm, "CDC5L_PTC_MANE_TPM.csv")
-write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/CDC5L_nk_PTC_MANE_TPM.csv")
+write_csv(full_genelist, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/CDC5L_nk_TPM.csv")

@@ -76,9 +76,10 @@ listgenes <- getBM(attributes = c("external_gene_name","ensembl_transcript_id","
 
 anno_genes = counts %>% filter(str_detect(ENSTID,"ENST")) %>%
   left_join(listgenes, by = c("ENSTID" = "ensembl_transcript_id"))
-SNRNP200_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_BRR2_ISAR/SNRNP200_novel_iso_features.csv")
+SNRNP200_novel_iso_features <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/ENCODE_SNRNP200_ISAR/SNRNP200_novel_iso_features.csv")
 novel_genes = counts %>% filter(str_detect(ENSTID,"MST")) %>% 
-  full_join(SNRNP200_novel_iso_features, by = c("ENSTID" = "isoform_id"))
+  left_join(SNRNP200_novel_iso_features, by = c("ENSTID" = "isoform_id")) %>% 
+  filter(!is.na(PTC))
 full_genelist = anno_genes %>% full_join(novel_genes, by = c("ENSTID",
                                                              "ensembl_gene_id" = "gene_id",
                                                              "external_gene_name" = "gene_name",
@@ -333,7 +334,4 @@ write.csv(SNRNP200_SC_impact, "SNRNP200_splicing_impact.csv",row.names = FALSE)
 
 #### Pull the TPM of genes for the NMD TPM graph ####
 #Check WT and KD are refering to the right columns in full_genelist
-PTC_tpm = full_genelist %>% right_join(sPTC_MANE, by = c("ENSTID" = "transID"))
-PTC_tpm = PTC_tpm %>% select(5,6,8:10,14) %>% rename(PTC = PTC.y)
-write_csv(PTC_tpm, "SNRNP200_PTC_MANE_TPM.csv")
-write_csv(PTC_tpm, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SNRNP200_nk_PTC_MANE_TPM.csv")
+write_csv(full_genelist, "C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/SNRNP200_nk_TPM.csv")
