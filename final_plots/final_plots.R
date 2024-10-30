@@ -39,7 +39,6 @@ library(patchwork)
 library(pheatmap)
 library(ggVennDiagram)
 library(MoMAColors)
-library(ggbreak)
 
 all_GOI = c("UPF1","EIF4A3","MAGOH",
             "AQR","RBM22","CDC5L",
@@ -3279,7 +3278,58 @@ ggsave("Gene_level_AS_boxplot.pdf",
        device = pdf,
        dpi = 300)
 
-
+MF_GL_AS_box = ggplot(data = GL_AS_combined %>% filter(Sample %in% Pres_KD))
+MF_GL_AS_box = MF_GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                                         y = log2FoldChange,
+                                         fill = AS_gene),
+                                     position = position_dodge2(width = 0.9),
+                                     width = 0.8,
+                                     outlier.shape = 21,
+                                     outlier.alpha = 0.5,
+                                     outlier.colour = NA,
+                                     linewidth = 1) +
+  scale_fill_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                   "TRUE" = "AS")) +
+  scale_color_manual(values = AS_colors, labels = c("FALSE" = "no AS",
+                                                    "TRUE" = "AS")) +
+  geom_text_repel(data = full_GL_AS_summary %>% filter(Sample %in% Pres_KD),
+                  aes(x = factor(Sample, levels = all_GOI),
+                      y = -3,
+                      color = AS_gene,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.8),
+                  size = 8,
+                  direction = "y",
+                  segment.color = NA) +
+  geom_label(data = full_GL_AS_summary %>% filter(Sample %in% Pres_KD),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = med,
+                 color = AS_gene,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_text(data = full_GL_AS_summary %>% filter(AS_gene == "TRUE" & Sample %in% Pres_KD),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 3,
+                label = signif(P, digits = 3)),
+            show.legend = F,
+            size = 8,
+            color = "black") +
+  labs(y = "Log2(Fold Change)",
+       fill = "Gene Type",
+       title = "Gene level Alternate Splicing") +
+  coord_cartesian(ylim = c(-4,4)) +
+  theme_bw()
+MF_GL_AS_box
+ggsave("Main_fig_Gene_level_AS_boxplot.pdf",
+       plot = MF_GL_AS_box,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
 
 
 ####Do the analysis using the SMG6/SMG7 depletion PTC list####
@@ -3600,7 +3650,7 @@ ggsave("PTC_heatmap_largeP.pdf",
        dpi = 300)
 
 ####Look at Spliciing Inhibitor treatment####
-Splicing_inhibitors = c("Risdiplam","Pladienolide","THZ531","Indisulam")
+Splicing_inhibitors = c("Pladienolide","THZ531","Indisulam","Risdiplam")
 full_SI_MANE_PTC = tibble(Sample = character())
 full_SI_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
 full_SI_new_sPTC = tibble(Sample = character())
@@ -4222,11 +4272,12 @@ ratio_tpm_plot = ratio_tpm_plot +   geom_smooth(aes(x = -log10(P),
                  y = ratio,
                  color = Splice_Stage),
              size = 5) +
-  geom_label_repel(aes(x = -log10(P),
+  geom_text_repel(aes(x = -log10(P),
                        y = ratio,
                        label = Sample,
                        color = Splice_Stage),
-                   show.legend = FALSE) +
+                   show.legend = FALSE,
+                   size = 6) +
   scale_color_manual(values = Complex_colors) +
   labs(x = "-log10(padj)",
        y = "Novel/ Annotated NMD target TPM") +
