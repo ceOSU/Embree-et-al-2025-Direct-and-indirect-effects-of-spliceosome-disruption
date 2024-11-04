@@ -3603,31 +3603,33 @@ ggsave("SMG_PTC_MANE_boxplot_mainFig.pdf",
 
 ##Make a heatmap of the P-value of each of the KDs for the summary figure
 #Rearainge the data table
-hm_df =SMG_PTC_MANE_summary %>% ungroup() %>% dplyr::select(Sample,P) %>% distinct(Sample,.keep_all = T) #Filter to just the data needed for the heatmap
+hm_df =SMG_PTC_MANE_summary %>% ungroup() %>% dplyr::select(Sample,P) %>% distinct(Sample,.keep_all = T) %>%  #Filter to just the data needed for the heatmap
+  mutate(p_log = -log10(P)) %>% select(Sample,p_log)
 hm_df = hm_df %>% mutate(Sample = factor(Sample, levels = all_GOI)) %>% arrange(Sample) #Put them in the order of the other figures
 hm_df = hm_df %>% column_to_rownames(var="Sample") #Put the data in the format of pheatmap
-hm_small = hm_df %>% filter(P < 0.01)
-hm_large = hm_df %>% filter(P >= 0.01)
+hm_ns = hm_df %>% filter(p_log < 1.30103) 
+hm_sig = hm_df %>% filter(p_log >= 1.30103)
 #Make the breaks
-breaklist_small = c(seq(min(hm_df[hm_df != min(hm_df,na.rm = T)],na.rm = T),0.01,length.out = 1000))
-colors_small = colorRampPalette(c("#474ED7","#EC458D"))(999)
+breaklist = c(seq(0,max(hm_df$p_log),length.out = 100))
+colors_small = colorRampPalette(c("#474ED7","#EC458D"))(99)
 breaklist_large = c(seq(0.01,1,length.out = 100))
 colors_large = colorRampPalette(c("#EC458D","#FFF1BF"))(99)
+all_hm_colors = colorRampPalette(c("#FFF1BF","#EC458D","#474ED7"))(99)
 #Try making two heatmaps, one going from min-0.05 and one from 0.05-1
 
 #Make heatmap
-HM_PTC_small = pheatmap(hm_small,
-                        color = colors_small,
-                        breaks = breaklist_small,
+HM_PTC = pheatmap(hm_df,
+                        color = all_hm_colors,
+                        breaks = breaklist,
                         na_col = "grey",
                         cluster_rows = F,
                         cluster_cols = F,
                         display_numbers = T,
                         number_format = "%.1e",
-                        number_color = "white")#heatmap going from the smallest P-value to 0.01
-ggsave("PTC_heatmap_smallP.pdf",
+                        number_color = "black")#heatmap going from the smallest P-value to 0.01
+ggsave("PTC_heatmap_logp.pdf",
        device = pdf,
-       plot = HM_PTC_small,
+       plot = HM_PTC,
        width = 3,
        height = 6,
        units = "in",
@@ -4259,16 +4261,18 @@ ratio_tpm = Combined_TPM_summary %>% select(Sample, isoform, total) %>%
   rename(Novel = "Novel NMD") %>% 
   mutate(ratio = Novel/NMD)
 padj_table = hm_df %>% rownames_to_column(var = "Sample")
-ratio_tpm = ratio_tpm %>% left_join(padj_table) %>% left_join(Sample_complex)
+ratio_tpm = ratio_tpm %>% left_join(padj_table) %>% left_join(Sample_complex) %>% 
+  mutate(log_p = -log10(P))
+tpm_ratio_cor = cor.test(x = ratio_tpm$log_p,y = ratio_tpm$ratio)
 
 ratio_tpm_plot = ggplot(ratio_tpm)
-ratio_tpm_plot = ratio_tpm_plot +   geom_smooth(aes(x = -log10(P),
+ratio_tpm_plot = ratio_tpm_plot +   geom_smooth(aes(x = log_p,
                                                     y = ratio),
                                                 method = "lm",
                                                 color = "black",
                                                 se = FALSE,
                                                 linetype = "dashed") +
-  geom_point(aes(x = -log10(P),
+  geom_point(aes(x = log_p,
                  y = ratio,
                  color = Splice_Stage),
              size = 5) +
@@ -4278,6 +4282,16 @@ ratio_tpm_plot = ratio_tpm_plot +   geom_smooth(aes(x = -log10(P),
                        color = Splice_Stage),
                    show.legend = FALSE,
                    size = 6) +
+  geom_text(aes(x = 25,
+                y = 4,
+                label = paste0("R=",round(tpm_ratio_cor$estimate,digits = 3))),
+                color = "black",
+                size = 6) +
+  geom_text(aes(x = 25,
+                y = 3.8,
+                label = paste0("p=",signif(tpm_ratio_cor$p.value,digits = 3))),
+                color = "black",
+                size = 6) +
   scale_color_manual(values = Complex_colors) +
   labs(x = "-log10(padj)",
        y = "Novel/ Annotated NMD target TPM") +
