@@ -3610,44 +3610,57 @@ hm_df = hm_df %>% column_to_rownames(var="Sample") #Put the data in the format o
 hm_ns = hm_df %>% filter(p_log < 1.30103) 
 hm_sig = hm_df %>% filter(p_log >= 1.30103)
 #Make the breaks
-breaklist = c(seq(0,max(hm_df$p_log),length.out = 100))
-colors_small = colorRampPalette(c("#474ED7","#EC458D"))(99)
-breaklist_large = c(seq(0.01,1,length.out = 100))
-colors_large = colorRampPalette(c("#EC458D","#FFF1BF"))(99)
-all_hm_colors = colorRampPalette(c("#FFF1BF","#EC458D","#474ED7"))(99)
-#Try making two heatmaps, one going from min-0.05 and one from 0.05-1
+breaklist_small = c(seq(0,1.30103,length.out = 10))
+colors_small = colorRampPalette(c("#01A7C2","#F8F4AC"))(9)
+breaklist_large = c(seq(1.30103,max(hm_df$p_log),length.out = 100))
+colors_large = colorRampPalette(c("#F8F4AC","#F68E5F"))(99)
+all_breaks = c(seq(2,max(hm_df$p_log),length.out = 100))
+all_hm_colors = colorRampPalette(c("white","#01A7C2"))(99)
 
 #Make heatmap
-HM_PTC = pheatmap(hm_df,
-                        color = all_hm_colors,
-                        breaks = breaklist,
-                        na_col = "grey",
-                        cluster_rows = F,
-                        cluster_cols = F,
-                        display_numbers = T,
-                        number_format = "%.1e",
-                        number_color = "black")#heatmap going from the smallest P-value to 0.01
-ggsave("PTC_heatmap_logp.pdf",
-       device = pdf,
-       plot = HM_PTC,
-       width = 3,
-       height = 6,
-       units = "in",
-       dpi = 300)
-HM_PTC_large = pheatmap(hm_large,
+HM_sig = pheatmap(hm_sig,
                         color = colors_large,
                         breaks = breaklist_large,
                         na_col = "grey",
                         cluster_rows = F,
                         cluster_cols = F,
                         display_numbers = T,
-                        number_format = "%.1e",
-                        number_color = "black")#heatmap going from the 0.01 to 1
-ggsave("PTC_heatmap_largeP.pdf",
+                        number_color = "black")#heatmap going from the smallest P-value to 0.01
+ggsave("PTC_heatmap_logp_sig.pdf",
        device = pdf,
-       plot = HM_PTC_large,
+       plot = HM_sig,
+       width = 3,
+       height = 6,
+       units = "in",
+       dpi = 300)
+HM_PTC_ns= pheatmap(hm_ns,
+                        color = colors_small,
+                        breaks = breaklist_small,
+                        na_col = "grey",
+                        cluster_rows = F,
+                        cluster_cols = F,
+                        display_numbers = T,,
+                        number_color = "black")#heatmap going from the 0.01 to 1
+ggsave("PTC_heatmap_logp_ns.pdf",
+       device = pdf,
+       plot = HM_PTC_ns,
        width = 3,
        height = 3,
+       units = "in",
+       dpi = 300)
+HM_all = pheatmap(hm_df,
+                  color = all_hm_colors,
+                  breaks = all_breaks,
+                  na_col = "grey",
+                  cluster_rows = F,
+                  cluster_cols = F,
+                  display_numbers = T,
+                  number_color = "black")#heatmap going from the smallest P-value to 0.01
+ggsave("PTC_heatmap_logp_all.pdf",
+       device = pdf,
+       plot = HM_all,
+       width = 3,
+       height = 6,
        units = "in",
        dpi = 300)
 

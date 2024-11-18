@@ -1961,10 +1961,8 @@ all_events = Combined_sum_JCEC %>% full_join(Novel_Event_sum, by = c("EventType"
   rename(NovelEvents = n) #Combine the annotated and novel splice site counts table
 all_events_summary = all_events %>% group_by(Sample) %>% 
   summarise(total_ann = sum(TotalEventsJCEC),
-            sig_ann = sum(SignificantEventsJCEC),
-            total_novel = sum(NovelEvents)) %>% 
-  rename(Significant = sig_ann,
-         Novel = total_novel) %>% 
+            Significant = sum(SignificantEventsJCEC),
+            Novel = sum(NovelEvents)) %>% 
   left_join(Sample_complex,by = "Sample") %>% 
   left_join(read_depth,by = "Sample") %>% 
   mutate(Sig_norm = Significant/Avg_millions,
@@ -2147,6 +2145,10 @@ for (i in Disease_samples) {
          eval(parse(text = paste0(i,"_novel_A3SS"))) %>% 
            mutate(Sample = i,
                   Event = "A3SS"))
+      assign(paste0(i,"_novel_SE"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           mutate(Sample = i,
+                  Event = "SE"))
   assign(paste0(i,"_novel_events"),
          eval(parse(text = paste0(i,"_novel_SE"))) %>% 
            full_join(eval(parse(text = paste0(i,"_novel_A3SS")))) %>% 
@@ -2160,4 +2162,218 @@ all_disease_events = all_disease_novel %>% full_join(all_disease_sig)
 write_csv(all_disease_events,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/disease_all_splicing_events")
 ```
 
+
+# Examination of splice altering drugs
+
+I am going to look at the splicing changes that occur after treatment with drugs that effect the spliceosome.
+Pladienolide B, THZ531, and Indusilam are spliceosome inhibitors while Risdiplam alters splice site usage. 
+
+## Load in all the data
+```{r}
+SI_samples = c("pladienolide_B","THZ531","Indisulam","Risdiplam")
+all_SI_sig = tibble(Sample = character())
+all_SI_novel = tibble(Sample = character())
+for (i in SI_samples) {
+  print(i)
+  
+   assign(paste0(i,"_SE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/SE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #import the AQR skipped exon data based on JCEC
+  
+  assign(paste0(i,"_SE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           group_by(GeneID) %>% 
+           filter(PValue < 0.01) %>% 
+           mutate(Type = "SE"))
+  assign(paste0(i,"_3SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/A3SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 3' Splice Site
+  assign(paste0(i,"_3SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_3SS_JCEC"))) %>% 
+           filter(PValue < 0.01) %>%  #Filter to significant transcripts
+    mutate(Type = "A3SS"))
+  
+  assign(paste0(i,"_5SS_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/A5SS.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the alternate 5' Splice Site
+  assign(paste0(i,"_5SS_sig_JCEC"),
+         eval(parse(text = paste0(i,"_5SS_JCEC"))) %>% 
+           filter(PValue < 0.01) %>%  #Filter to significant transcripts
+    mutate(Type = "A5SS"))
+  
+  assign(paste0(i,"_MXE_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/MXE.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the mutually exclusive exons
+  assign(paste0(i,"_MXE_sig_JCEC"),
+         eval(parse(text = paste0(i,"_MXE_JCEC"))) %>% 
+           filter(PValue < 0.01) %>%  #Filter to significant transcripts
+    mutate(Type = "MXE"))
+  
+    assign(paste0(i,"_RI_JCEC"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/RI.MATS.JCEC.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T)) #Import the Retained Introns
+  assign(paste0(i,"_RI_sig_JCEC"),
+         eval(parse(text = paste0(i,"_RI_JCEC"))) %>% 
+           filter(PValue < 0.01) %>%  #Filter to significant transcripts
+    mutate(Type = "RI"))
+  
+  assign(paste0(i,"_sig_combined"),
+         eval(parse(text = paste0(i,"_SE_sig_JCEC"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_3SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_5SS_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_MXE_sig_JCEC")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_RI_sig_JCEC")))) %>% 
+    mutate(Sample = i))
+  
+  write_csv(eval(parse(text = paste0(i,"_sig_combined"))),
+            file = paste0("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/",
+                          i,
+                          "_annotated_AS.csv"))
+  all_SI_sig = all_SI_sig %>% full_join(eval(parse(text = paste0(i,"_sig_combined")))) %>% 
+    mutate(Event_type = "Significant")
+  
+    assign(paste0(i,"_novel_SE"),
+         read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                           i,
+                           "/outputdir/fromGTF.novelSpliceSite.SE.txt"),
+                    delim = "\t",
+                    escape_double = F,
+                    trim_ws = T))
+    assign(paste0(i,"_novel_RI"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.RI.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Retained Introns
+    
+  assign(paste0(i,"_novel_MXE"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.MXE.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Imports Mutually Exclusive Exons
+    
+  assign(paste0(i,"_novel_A3SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A3SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)) #Import the novel alternate 3' splice sites
+  
+  assign(paste0(i,"_novel_A5SS"), read_delim(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/rMATS/",
+                                                 i,
+                                                 "/outputdir/fromGTF.novelSpliceSite.A5SS.txt"), 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE))
+  assign(paste0(i,"_novel_RI"),
+         eval(parse(text = paste0(i,"_novel_RI"))) %>% 
+           mutate(Sample = i,
+                  Event = "RI"))
+  
+  assign(paste0(i,"_novel_MXE"),
+         eval(parse(text = paste0(i,"_novel_MXE"))) %>% 
+           mutate(Sample = i,
+                  Event = "MXE"))
+    
+  assign(paste0(i,"_novel_A5SS"),
+         eval(parse(text = paste0(i,"_novel_A5SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A5SS"))
+      
+  assign(paste0(i,"_novel_A3SS"),
+         eval(parse(text = paste0(i,"_novel_A3SS"))) %>% 
+           mutate(Sample = i,
+                  Event = "A3SS"))
+    assign(paste0(i,"_novel_SE"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           mutate(Sample = i,
+                  Event = "SE"))
+  assign(paste0(i,"_novel_events"),
+         eval(parse(text = paste0(i,"_novel_SE"))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A3SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_A5SS")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_RI")))) %>% 
+           full_join(eval(parse(text = paste0(i,"_novel_MXE")))))
+  all_SI_novel = all_SI_novel %>% full_join(eval(parse(text = paste0(i,"_novel_events")))) %>% 
+    mutate(Event_type = "Novel")
+}
+all_SI_events = all_SI_novel %>% full_join(all_SI_sig)
+write_csv(all_SI_events,"C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Figures/Data/NMD_TPM/disease_all_splicing_events")
+```
+
+
+## Make the event type plot
+```{r}
+#Novel proportions
+SI_Novel_Event_sum = all_SI_novel %>% group_by(Sample,Event) %>% count()
+SI_novel_prop_sum = SI_Novel_Event_sum %>% group_by(Sample) %>% mutate(prop = n/sum(n))
+SI_novel_stacked = ggplot(data = SI_novel_prop_sum)
+SI_novel_stacked = SI_novel_stacked + geom_col(aes(x = factor(Sample, levels = SI_samples),
+                                             y = prop,
+                                             fill = Event))
+SI_novel_stacked = SI_novel_stacked + theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(y = "KD",
+       x = "Proportion of Novel Splice Events",
+       title = "Changes in Novel Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+SI_novel_stacked
+ggsave("SI_Novel_stacked_JCEC.pdf",
+       plot = SI_novel_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Annotated proportions
+SI_percent_sum = all_SI_sig %>% group_by(Sample,Type) %>% 
+  count()
+SI_percent_sum = SI_percent_sum %>% group_by(Sample) %>% 
+  mutate(prop = n/sum(n))
+
+SI_sig_stacked = ggplot(data = SI_percent_sum)
+SI_sig_stacked = SI_sig_stacked + geom_col(aes(x = factor(Sample,levels = SI_samples), 
+                                         y = prop, 
+                                         fill = Type)) +
+  theme_minimal() +
+  scale_fill_manual(values = met.brewer("Derain", n = 5)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(x = "KD",
+       y = "Proportion of Significant Splicing Changes",
+       title = "Changes in Annotated Splicing Events Upon KD",
+       caption = "Calculated using JCEC")
+SI_sig_stacked
+ggsave("SI_Sig_stacked_JCEC.pdf",
+       plot = SI_sig_stacked,
+       device = "pdf",
+       scale = 1,
+       width = 14,
+       height = 10,
+       units = "in",
+       dpi = 300)
+```
 
