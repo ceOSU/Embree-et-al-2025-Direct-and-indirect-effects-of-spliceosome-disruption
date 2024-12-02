@@ -39,6 +39,7 @@ library(patchwork)
 library(pheatmap)
 library(ggVennDiagram)
 library(MoMAColors)
+library(ggupset)
 
 all_GOI = c("UPF1","EIF4A3","MAGOH",
             "AQR","RBM22","CDC5L",
@@ -4314,6 +4315,34 @@ ggsave("TPM_scatter_plot.pdf",
        device = pdf,
        width = 12,
        height = 12,
+       units = "in",
+       dpi = 300)
+
+# Look at the top upregulated NMD targeted transcripts (Update to include all depletions)
+NK_upreg = NK_PTC_only %>% filter(isoform == "NMD", log2FoldChange > 0.3219) #Filter to anything greater than 1.25 fold upregulated
+NK_upset_table = NK_upreg %>% select(ENST.ID,Sample) %>%
+  group_by(ENST.ID) %>% 
+  summarize(depletions = list(Sample))
+
+NK_upset = ggplot(data = NK_upset_table)
+NK_upsetfull = NK_upset + geom_bar(aes(x = depletions)) +
+  scale_x_upset()
+NK_upsetfull
+ggsave("NK_full_upset_plot.pdf",
+       plot = NK_upsetfull,
+       device = pdf,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+NK_upset_lim = NK_upset + geom_bar(aes(x = depletions)) +
+  scale_x_upset(n_intersections = 20)
+NK_upset_lim
+ggsave("NK_top20_upset.pdf",
+       plot = NK_upset_lim,
+       device = pdf,
+       width = 20,
+       height = 10,
        units = "in",
        dpi = 300)
 
