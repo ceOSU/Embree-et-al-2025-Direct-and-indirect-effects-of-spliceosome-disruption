@@ -4319,7 +4319,7 @@ ggsave("TPM_scatter_plot.pdf",
        dpi = 300)
 
 # Look at the top upregulated NMD targeted transcripts (Update to include all depletions)
-NK_upreg = NK_PTC_only %>% filter(isoform == "NMD", log2FoldChange > 0.3219) #Filter to anything greater than 1.25 fold upregulated
+NK_upreg = NK_PTC_only %>% filter(isoform == "NMD" & log2FoldChange > 0.3219 & Sample %in% Pres_KD) #Filter to anything greater than 1.25 fold upregulated
 NK_upset_table = NK_upreg %>% select(ENST.ID,Sample) %>%
   group_by(ENST.ID) %>% 
   summarize(depletions = list(Sample))
