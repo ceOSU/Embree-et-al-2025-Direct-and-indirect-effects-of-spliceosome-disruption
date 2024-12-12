@@ -1633,6 +1633,109 @@ ggsave("only_AS_main_boxplot_FC_plot.pdf",
        units = "in",
        dpi = 300)
 
+##Look at changes of single exon genes##
+SEgenes <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/Bioinformatics template/SEgenes.csv")
+SE_AS_combined = AF_AS_combined %>% mutate(SE = if_else(ENST.ID %in% SEgenes$ensembl_transcript_id,
+                                                        "SE",
+                                                        "ME"))
+SE_AS_combined = SE_AS_combined %>% mutate(Gene_type = case_when(SE == "SE" ~ "SE",
+                                                                 SE == "ME" & AS_gene == "TRUE" ~ "AS",
+                                                                 SE == "ME" & AS_gene == "FALSE" ~ "noAS")) %>% 
+  filter(str_detect(transcript_mane_select,"NM"))
+view(SE_AS_combined)
+
+SE_res = tibble(Sample = character(), P_SE = numeric())
+noAS_res = tibble(Sample = character(), P_noAS = numeric())
+for (i in all_GOI) {
+  print(i)
+  assign(paste0(i,"_AS_SE_res"),
+         wilcox.test(log2FoldChange ~ Gene_type, data = SE_AS_combined %>% filter(Sample == i & Gene_type != "noAS"),
+                     exact = FALSE, alternative = "less"))
+  assign(paste0(i,"_AS_noAS_res"),
+         wilcox.test(log2FoldChange ~ Gene_type, data = SE_AS_combined %>% filter(Sample == i & Gene_type != "SE"),
+                     exact = FALSE, alternative = "less"))
+  SE_res = SE_res %>% add_row(Sample = i, P_SE = eval(parse(text = paste0(i,"_AS_SE_res$p.value"))))
+  noAS_res = noAS_res %>% add_row(Sample = i, P_noAS = eval(parse(text = paste0(i,"_noAS_res$p.value"))))
+}
+SE_AS_res_combined = SE_res %>% left_join(noAS_res)
+SE_AS_only_sum = SE_AS_combined %>% group_by(Sample,Gene_type) %>% 
+  summarise(n = n(),
+            med = median(log2FoldChange)) %>% 
+  left_join(SE_AS_res_combined, by = "Sample")
+view(SE_AS_only_sum)
+
+AS_SE_colors = c("AS" = "#6DC5B9",
+                 "noAS" = "#DE4D86",
+                 "SE" = "#FFC20A")
+SE_AS_plot = ggplot(data = SE_AS_combined)
+SE_AS_plot = SE_AS_plot + geom_boxplot(aes(x = factor(Sample,
+                                                      levels = all_GOI),
+                                           y = log2FoldChange,
+                                           fill = Gene_type),
+                                         position = position_dodge2(width = 0.9),
+                                         width = 0.8,
+                                         outlier.shape = 21,
+                                         outlier.alpha = 0.5,
+                                         outlier.colour = NA,
+                                         linewidth = 1) +
+  scale_fill_manual(values = AS_SE_colors, labels = c("AS" = "Altered Splicing",
+                                                      "noAS" = "Normal Splicing",
+                                                      "SE" = "Single Exon")) +
+  scale_color_manual(values = AS_SE_colors, labels = c("AS" = "Altered Splicing",
+                                                       "noAS" = "Normal Splicing",
+                                                       "SE" = "Single Exon")) +
+  geom_text_repel(data = SE_AS_only_sum %>% filter(Gene_type == "SE"),
+                  aes(x = factor(Sample,
+                           levels = all_GOI),
+                      y = 3,
+                      label = paste0("P(SE)=",signif(P_SE,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#FFC20A",
+                  direction = "y")+
+  geom_text_repel(data = SE_AS_only_sum %>% filter(Gene_type == "SE"),
+                  aes(x = factor(Sample,
+                           levels = all_GOI),
+                      y = 4,
+                      label = paste0("P(noAS)=",signif(P_noAS,digits = 3))),
+                  size = 7,
+                  show.legend = F,
+                  color = "#DE4D86",
+                  direction = "y")+
+  geom_label(data = SE_AS_only_sum,
+             aes(x = factor(Sample,
+                            levels = all_GOI),
+                 y = med,
+                 color = Gene_type,
+                 label = round(med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 3) +
+  geom_text_repel(data = SE_AS_only_sum,
+                  aes(x = factor(Sample,
+                                 levels = all_GOI),
+                      y = -2.5,
+                      color = Gene_type,
+                      label = n),
+                  show.legend = F,
+                  position = position_dodge2(width = 0.9),
+                  size = 7,
+                  direction = "y",
+                  segment.color = NA) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "Log2 Fold Change",
+       fill = "Gene Type")+
+  coord_cartesian(y = c(-4,4))
+SE_AS_plot
+ggsave("Single_Exon_and_AS_plot.pdf",
+       device = pdf,
+       plot = SE_AS_plot,
+       width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
 
 ####Compare no-AS genes to no-NMD genes####
 MS_noNMD_genes = MS_noNMD_transcripts %>% distinct(ensembl_gene_id)
@@ -3842,6 +3945,142 @@ ggsave("Splicing_Inhibitor_SMG_sPTC_boxplot.pdf",
        device = pdf,
        dpi = 300)
 
+##Look at the TPM of different transcripts##
+SI_full_novel_TPM = tibble(Sample = character())
+for (i in Splicing_inhibitors) {
+  print(i)
+  assign(paste0(i,"_novel_annotations"),
+         read_csv(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/",i,"_ISAR/",
+                         i,"_novel_iso_features.csv")))
+  assign(paste0(i,"_novel_TPM"),
+         read_csv(paste0(i,"_nk_TPM.csv")))
+  assign(paste0(i,"_novel_TPM"),
+         eval(parse(text = paste0(i,"_novel_TPM"))) %>% select(kdMean,wtMean,ENSTID,PTC,external_gene_name,ensembl_gene_id) %>% 
+           left_join(SMG_PTC_all_isoforms, by = c("ENSTID" = "ensembl_transcript_id",
+                                                  "ensembl_gene_id","external_gene_name")) %>% 
+           mutate(trans_type = if_else(str_detect(ENSTID,"MST"),"Novel","Annotated"),
+                  Sample = i))
+  SI_full_novel_TPM = SI_full_novel_TPM %>% full_join(eval(parse(text = paste0(i,"_novel_TPM"))))
+}
+
+#Make the plots
+SI_annotated_TPM_summary = SI_full_novel_TPM %>% filter(isoform == "MANE" | isoform == "NMD") %>% 
+  group_by(Sample, isoform) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total))
+SI_novel_TPM_summary = SI_full_novel_TPM %>% filter(trans_type == "Novel") %>% 
+  group_by(Sample, PTC) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total))
+
+TPM_summary_colors = c("MANE" = "#663171",
+                       "FALSE" = "#6ACDD8",
+                       "TRUE" = "#990D35",
+                       "NMD" = "#ea7428")
+SI_annotated_total_TPM = ggplot(data = SI_annotated_TPM_summary)
+SI_annotated_total_TPM = SI_annotated_total_TPM + geom_col(aes(x = factor(Sample, levels = Splicing_inhibitors),
+                                                                 y = total,
+                                                                 fill = factor(isoform,levels = c("MANE","NMD"))),
+                                                             position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       title = "Annotated Isoforms",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank()) +
+  coord_cartesian(ylim = c(0,3000000))
+SI_annotated_total_TPM
+ggsave("SI_total_TPM_annotated.pdf",
+       plot = SI_annotated_total_TPM,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+SI_novel_total_TPM = ggplot(data = SI_novel_TPM_summary)
+SI_novel_total_TPM = SI_novel_total_TPM + geom_col(aes(x = factor(Sample, levels = Splicing_inhibitors),
+                                                         y = total,
+                                                         fill = factor(PTC,levels = c("FALSE","TRUE"))),
+                                                     position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors, labels = c("FALSE" = "Novel Stable",
+                                                            "TRUE" = "Novel NMD")) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       title = "Novel Isoforms",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank()) +
+  coord_cartesian(ylim = c(0,3000000))
+SI_novel_total_TPM
+ggsave("SI_total_TPM_novel.pdf",
+       plot = SI_novel_total_TPM,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+SI_total_TPM_SBS = (SI_annotated_total_TPM | SI_novel_total_TPM) +
+  plot_layout(guides = "collect",
+              axes = "collect") +
+  labs(caption = "TPM from KD samples")
+SI_total_TPM_SBS
+ggsave("SI_total_TPM_SBS.pdf",
+       plot = SI_total_TPM_SBS,
+       device = pdf,
+       height = 10,
+       width = 40,
+       units = "in",
+       dpi = 300)
+
+SI_Combined_TPM_summary = SI_full_novel_TPM %>% filter(trans_type == "Novel" | isoform == "NMD") %>% 
+  mutate(isoform = case_when(trans_type == "Annotated" & isoform == "NMD" ~ "NMD",
+                             trans_type == "Novel" & PTC == "TRUE" ~ "Novel NMD",
+                             trans_type == "Novel" & PTC == "FALSE" ~ "Novel Stable")) %>% 
+  group_by(Sample,isoform) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total)) %>% 
+  filter(isoform != "Novel Stable")
+
+combined_TPM_summary_colors = c("Novel Stable" = "#6ACDD8",
+                                "Novel NMD" = "#990D35",
+                                "NMD" = "#ea7428")
+SI_combined_total_TPM = ggplot(data = SI_Combined_TPM_summary)
+SI_combined_total_TPM = SI_combined_total_TPM + geom_col(aes(x = factor(Sample, levels = Splicing_inhibitors),
+                                                               y = total,
+                                                               fill = factor(isoform,levels = c("NMD","Novel NMD","Novel Stable"))),
+                                                           position = "dodge") +
+  scale_fill_manual(values = combined_TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=14, face="bold"),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank())
+
+SI_combined_total_TPM
+ggsave("SI_combined_total_TPM_annotated.pdf",
+       plot = SI_combined_total_TPM,
+       width = 40,
+       height = 14,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+
 ####Look at the effect of including novel isoforms in the kallisto transcriptome ####
 NK_full_alltrans = tibble(Sample = character())
 for (i in all_GOI) {
@@ -3913,8 +4152,9 @@ NK_PTC_only = NK_full_alltrans %>% inner_join(SMG_PTC_all_isoforms, by = c("ENST
                                                                            "ensembl_gene_id",
                                                                            "transcript_biotype"))
 
-NK_PTC_summary = NK_PTC_only %>% group_by(Sample, isoform) %>% summarise(n = n(),
-                                                                      med = median(log2FoldChange))
+NK_PTC_summary = NK_PTC_only %>% group_by(Sample, isoform) %>% filter(Sample %in% Pres_KD) %>% 
+    summarise(n = n(),
+              med = median(log2FoldChange))
 full_NK_PTC_res = tibble(Sample = character(),P_Other = numeric(),P_MANE = numeric())
 for (i in Pres_KD) {
   assign(paste0(i,"_other_NK_PTC_res"),
@@ -3982,7 +4222,7 @@ ggsave("novel_kallisto_PTC_isoforms.pdf",
 NK_no_novel = NK_PTC_only %>% filter(!str_detect(isoform,"novel"))
 NK_no_novel_summary = NK_no_novel %>% group_by(Sample, isoform) %>% summarise(n = n(),
                                                                            med = median(log2FoldChange))
-NK_no_Novel_boxplot = ggplot(NK_no_novel)
+NK_no_Novel_boxplot = ggplot(NK_no_novel %>% filter(Sample %in% Pres_KD))
 NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                                                              y = log2FoldChange,
                                                              fill = factor(isoform,levels = c("MANE","NMD","Other"))),
@@ -4344,6 +4584,54 @@ ggsave("NK_top20_upset.pdf",
        width = 20,
        height = 10,
        units = "in",
+       dpi = 300)
+
+#Look at transcripts up in EIF4A3
+EIF4A3_up = NK_PTC_only %>% filter(Sample == "EIF4A3" & isoform == "NMD" & log2FoldChange > 0.3219)
+NK_Upreg_4A3 = NK_PTC_only %>% filter(Sample != "EIF4A3" & Sample != "UPF1" & Sample != "MAGOH" &
+                                        ENST.ID %in% EIF4A3_up$ENST.ID)
+NK_Upreg_4A3_sum = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(nKDs = n_distinct(Sample),
+            Depletion = list(Sample))
+NK_upreg_attributes = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name"),
+                            filters = "ensembl_transcript_id",
+                            values = NK_Upreg_4A3_sum$ENST.ID,
+                            mart = ensembl)
+NK_Upreg_4A3_sum = NK_Upreg_4A3_sum %>% left_join(NK_upreg_attributes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  unnest_wider(Depletion,names_sep = "_")
+NK_Upreg_5orMore = NK_Upreg_4A3_sum %>% filter(nKDs >= 5)
+write_csv(NK_Upreg_5orMore,"NMD_targets_up_5_or_more.csv")
+NK_Upreg_10orMore = NK_Upreg_4A3_sum %>% filter(nKDs >= 10)
+write_csv(NK_Upreg_10orMore,"NMD_targets_up_10_or_more.csv")
+
+#Pull the transcripts shared between AQR, SF3B1, SF3B3, and CDC40
+NK_upreg_newNMD_fac = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219 & Sample %in% c("AQR","SF3B3","SF3B1","CDC40"))
+NK_upreg_newNMD_fac_sum = NK_upreg_newNMD_fac %>% group_by(ENST.ID) %>% summarize(kds = n_distinct(Sample)) %>% 
+  filter(kds == 4)
+NK_upreg_newNMD_fac = NK_upreg_newNMD_fac %>% filter(ENST.ID %in% NK_upreg_newNMD_fac_sum$ENST.ID)
+write_csv(NK_upreg_newNMD_fac,"AQR_SF3B1_SF3B3_CDC40_common_up.csv")
+  
+
+NK_4A3_Upreg_upset_table = NK_Upreg_4A3 %>% filter(ENST.ID %in% NK_Upreg_10orMore$ENST.ID &
+                                                     log2FoldChange > 0.3219 & 
+                                                     Sample %in% c("AQR","SF3B3","SF3B1","CDC40")) %>% 
+  select(ENST.ID,Sample) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(depletions = list(Sample))
+NK_4A3_upset = ggplot(NK_4A3_Upreg_upset_table)
+NK_4A3_upset = NK_4A3_upset + geom_bar(aes(x = depletions)) +
+  scale_x_upset() +
+  labs(x = "Depletions",
+       y = "Number of Transcripts",
+       caption = "NMD targets 1.25 fold up in EIF4A3 and 10 other KDs")
+NK_4A3_upset
+ggsave("NMDtargets_up_in_4A3_upset.pdf",
+       plot = NK_4A3_upset,
+       device = pdf,
+       units = "in",
+       width = 10,
+       height = 10,
        dpi = 300)
 
 ####Analyze PRPF31 RP IPSC and RPE####
@@ -4816,4 +5104,139 @@ ggsave("Disease_AS_boxplot.pdf",
        width = 10,
        height = 10,
        units = "in",
+       dpi = 300)
+
+##Look at the TPM of different transcripts##
+Dis_full_novel_TPM = tibble(Sample = character())
+for (i in Disease_sample) {
+  print(i)
+  assign(paste0(i,"_novel_annotations"),
+         read_csv(paste0("C:/Users/Caleb/OneDrive - The Ohio State University/BioinfoData/IsoformSwitch/",i,"_ISAR/",
+                         i,"_novel_iso_features.csv")))
+  assign(paste0(i,"_novel_TPM"),
+         read_csv(paste0(i,"_nk_TPM.csv")))
+  assign(paste0(i,"_novel_TPM"),
+         eval(parse(text = paste0(i,"_novel_TPM"))) %>% select(kdMean,wtMean,ENSTID,PTC,external_gene_name,ensembl_gene_id) %>% 
+           left_join(SMG_PTC_all_isoforms, by = c("ENSTID" = "ensembl_transcript_id",
+                                                  "ensembl_gene_id","external_gene_name")) %>% 
+           mutate(trans_type = if_else(str_detect(ENSTID,"MST"),"Novel","Annotated"),
+                  Sample = i))
+  Dis_full_novel_TPM = Dis_full_novel_TPM %>% full_join(eval(parse(text = paste0(i,"_novel_TPM"))))
+}
+
+#Make the plots
+Dis_annotated_TPM_summary = Dis_full_novel_TPM %>% filter(isoform == "MANE" | isoform == "NMD") %>% 
+  group_by(Sample, isoform) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total))
+Dis_novel_TPM_summary = Dis_full_novel_TPM %>% filter(trans_type == "Novel") %>% 
+  group_by(Sample, PTC) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total))
+
+TPM_summary_colors = c("MANE" = "#663171",
+                       "FALSE" = "#6ACDD8",
+                       "TRUE" = "#990D35",
+                       "NMD" = "#ea7428")
+Dis_annotated_total_TPM = ggplot(data = Dis_annotated_TPM_summary)
+Dis_annotated_total_TPM = Dis_annotated_total_TPM + geom_col(aes(x = factor(Sample, levels = Disease_sample),
+                                                         y = total,
+                                                         fill = factor(isoform,levels = c("MANE","NMD"))),
+                                                     position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       title = "Annotated Isoforms",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank()) +
+  coord_cartesian(ylim = c(0,3000000))
+Dis_annotated_total_TPM
+ggsave("RP_total_TPM_annotated.pdf",
+       plot = Dis_annotated_total_TPM,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+Dis_novel_total_TPM = ggplot(data = Dis_novel_TPM_summary)
+Dis_novel_total_TPM = Dis_novel_total_TPM + geom_col(aes(x = factor(Sample, levels = Disease_sample),
+                                                 y = total,
+                                                 fill = factor(PTC,levels = c("FALSE","TRUE"))),
+                                             position = "dodge") +
+  scale_fill_manual(values = TPM_summary_colors, labels = c("FALSE" = "Novel Stable",
+                                                            "TRUE" = "Novel NMD")) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       title = "Novel Isoforms",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank()) +
+  coord_cartesian(ylim = c(0,3000000))
+Dis_novel_total_TPM
+ggsave("RP_total_TPM_novel.pdf",
+       plot = Dis_novel_total_TPM,
+       width = 20,
+       height = 10,
+       units = "in",
+       device = pdf,
+       dpi = 300)
+
+Dis_total_TPM_SBS = (Dis_annotated_total_TPM | Dis_novel_total_TPM) +
+  plot_layout(guides = "collect",
+              axes = "collect") +
+  labs(caption = "TPM from KD samples")
+Dis_total_TPM_SBS
+ggsave("RP_total_TPM_SBS.pdf",
+       plot = Dis_total_TPM_SBS,
+       device = pdf,
+       height = 10,
+       width = 40,
+       units = "in",
+       dpi = 300)
+
+Dis_Combined_TPM_summary = Dis_full_novel_TPM %>% filter(trans_type == "Novel" | isoform == "NMD") %>% 
+  mutate(isoform = case_when(trans_type == "Annotated" & isoform == "NMD" ~ "NMD",
+                             trans_type == "Novel" & PTC == "TRUE" ~ "Novel NMD",
+                             trans_type == "Novel" & PTC == "FALSE" ~ "Novel Stable")) %>% 
+  group_by(Sample,isoform) %>% 
+  summarise(n = n(),
+            total = sum(kdMean)) %>% 
+  mutate(log_total = log10(total)) %>% 
+  filter(isoform != "Novel Stable")
+
+combined_TPM_summary_colors = c("Novel Stable" = "#6ACDD8",
+                                "Novel NMD" = "#990D35",
+                                "NMD" = "#ea7428")
+Dis_combined_total_TPM = ggplot(data = Dis_Combined_TPM_summary)
+Dis_combined_total_TPM = Dis_combined_total_TPM + geom_col(aes(x = factor(Sample, levels = Disease_sample),
+                                                       y = total,
+                                                       fill = factor(isoform,levels = c("NMD","Novel NMD","Novel Stable"))),
+                                                   position = "dodge") +
+  scale_fill_manual(values = combined_TPM_summary_colors) +
+  labs(x = "Depletion",
+       y = "log10(Total TPM)",
+       fill = "Isoform") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust=1)) +
+  theme(axis.text=element_text(size=14, face="bold"),
+        axis.title=element_text(size=14,face="bold"),
+        panel.grid.major.x = element_blank())
+
+Dis_combined_total_TPM
+ggsave("RP_combined_total_TPM_annotated.pdf",
+       plot = Dis_combined_total_TPM,
+       width = 40,
+       height = 14,
+       units = "in",
+       device = pdf,
        dpi = 300)
