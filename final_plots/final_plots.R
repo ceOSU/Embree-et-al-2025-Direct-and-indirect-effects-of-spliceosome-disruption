@@ -974,7 +974,7 @@ PE_boxplot = PE_boxplot +
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 7,
+             size = 9,
              color = "black",
             show.legend = F)+
   geom_label(data = PE_pres_sum %>% filter(Sample %in% Pres_KD),
@@ -992,7 +992,7 @@ PE_boxplot = PE_boxplot +
                       label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 7,
+             size = 9,
              direction = "y",
              segment.color = NA) +
   theme_bw() + 
@@ -1026,7 +1026,7 @@ full_PE_boxplot = full_PE_boxplot +
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
                  label = signif(P,digits = 3)),
-             size = 7,
+             size = 9,
              color = "black")+
   geom_label(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
              aes(x = factor(Sample, levels = all_GOI),
@@ -1043,7 +1043,7 @@ full_PE_boxplot = full_PE_boxplot +
                  label = n),
              show.legend = F,
              position = position_dodge2(width = 0.9),
-             size = 7,
+             size = 9,
              direction = "y",
              segment.color = NA) +
   theme_bw() + 
@@ -3476,8 +3476,8 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = all_GOI),
                 y = 4,
-                label = paste0("P=",signif(P_MANE,digits = 3))),
-            size = 7,
+                label = signif(P_MANE,digits = 3)),
+            size = 9,
             show.legend = F,
             color = "#663171",
             direction = "y",
@@ -3485,8 +3485,8 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = all_GOI),
                 y = 3,
-                label = paste0("P=",signif(P_Other,digits = 3))),
-            size = 7,
+                label = signif(P_Other,digits = 3)),
+            size = 9,
             show.legend = F,
             color = "#6FC37D",
             direction = "y",
@@ -3507,7 +3507,7 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
                       color = isoform),
                   show.legend = F,
                   position = position_dodge2(width = 0.9),
-                  size = 7,
+                  size = 9,
                   direction = "y",
                   segment.color = NA)+
   coord_cartesian(ylim = c(-4,4)) +
@@ -3538,8 +3538,8 @@ SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = paste0("P=",signif(P_MANE,digits = 3))),
-                  size = 7,
+                      label = signif(P_MANE,digits = 3)),
+                  size = 9,
                   show.legend = F,
                   color = "#663171",
                   direction = "y",
@@ -3547,8 +3547,8 @@ SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 3,
-                      label = paste0("P=",signif(P_Other,digits = 3))),
-                  size = 7,
+                      label = signif(P_Other,digits = 3)),
+                  size = 9,
                   show.legend = F,
                   color = "#6FC37D",
                   direction = "y",
@@ -3613,8 +3613,8 @@ SMG_PTC_MANE_boxplot = SMG_PTC_MANE_boxplot + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD"),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = paste0("P=",signif(P,digits = 3))),
-                  size = 7,
+                      label = signif(P,digits = 3)),
+                  size = 9,
                   show.legend = F,
                   color = "black",
                   direction = "y",
@@ -3635,7 +3635,7 @@ SMG_PTC_MANE_boxplot = SMG_PTC_MANE_boxplot + geom_boxplot(aes(x = factor(Sample
                       color = isoform),
                   show.legend = F,
                   position = position_dodge2(width = 0.9),
-                  size = 7,
+                  size = 9,
                   direction = "y",
                   segment.color = NA)+
   coord_cartesian(ylim = c(-4,4)) +
@@ -3666,8 +3666,8 @@ SMG_PTC_MANE_boxplot_main = SMG_PTC_MANE_boxplot_main + geom_boxplot(aes(x = fac
   geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = paste0("P=",signif(P,digits = 3))),
-                  size = 7,
+                      label = signif(P,digits = 3)),
+                  size = 9,
                   show.legend = F,
                   color = "black",
                   direction = "y",
@@ -3688,7 +3688,7 @@ SMG_PTC_MANE_boxplot_main = SMG_PTC_MANE_boxplot_main + geom_boxplot(aes(x = fac
                       color = isoform),
                   show.legend = F,
                   position = position_dodge2(width = 0.9),
-                  size = 7,
+                  size = 9,
                   direction = "y",
                   segment.color = NA)+
   coord_cartesian(ylim = c(-4,4)) +
@@ -4628,6 +4628,99 @@ NK_4A3_upset = NK_4A3_upset + geom_bar(aes(x = depletions)) +
 NK_4A3_upset
 ggsave("NMDtargets_up_in_4A3_upset.pdf",
        plot = NK_4A3_upset,
+       device = pdf,
+       units = "in",
+       width = 10,
+       height = 10,
+       dpi = 300)
+
+NK_Upreg_4A3_sum = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(nKDs = n_distinct(Sample),
+            Depletion = list(Sample))
+NK_upreg_attributes = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name"),
+                            filters = "ensembl_transcript_id",
+                            values = NK_Upreg_4A3_sum$ENST.ID,
+                            mart = ensembl)
+NK_Upreg_4A3_sum = NK_Upreg_4A3_sum %>% left_join(NK_upreg_attributes, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  unnest_wider(Depletion,names_sep = "_")
+NK_Upreg_5orMore = NK_Upreg_4A3_sum %>% filter(nKDs >= 5)
+write_csv(NK_Upreg_5orMore,"NMD_targets_up_5_or_more.csv")
+NK_Upreg_10orMore = NK_Upreg_4A3_sum %>% filter(nKDs >= 10)
+write_csv(NK_Upreg_10orMore,"NMD_targets_up_10_or_more.csv")
+
+#Pull the transcripts shared between AQR, SF3B1, SF3B3, and CDC40
+NK_upreg_newNMD_fac = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219 & Sample %in% c("AQR","SF3B3","SF3B1","CDC40"))
+NK_upreg_newNMD_fac_sum = NK_upreg_newNMD_fac %>% group_by(ENST.ID) %>% summarize(kds = n_distinct(Sample)) %>% 
+  filter(kds == 4)
+NK_upreg_newNMD_fac = NK_upreg_newNMD_fac %>% filter(ENST.ID %in% NK_upreg_newNMD_fac_sum$ENST.ID)
+write_csv(NK_upreg_newNMD_fac,"AQR_SF3B1_SF3B3_CDC40_common_up.csv")
+
+
+NK_4A3_Upreg_upset_table = NK_Upreg_4A3 %>% filter(ENST.ID %in% NK_Upreg_10orMore$ENST.ID &
+                                                     log2FoldChange > 0.3219 & 
+                                                     Sample %in% c("AQR","SF3B3","SF3B1","CDC40")) %>% 
+  select(ENST.ID,Sample) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(depletions = list(Sample))
+NK_4A3_upset = ggplot(NK_4A3_Upreg_upset_table)
+NK_4A3_upset = NK_4A3_upset + geom_bar(aes(x = depletions)) +
+  scale_x_upset() +
+  labs(x = "Depletions",
+       y = "Number of Transcripts",
+       caption = "NMD targets 1.25 fold up in EIF4A3 and 10 other KDs")
+NK_4A3_upset
+ggsave("NMDtargets_up_in_4A3_upset.pdf",
+       plot = NK_4A3_upset,
+       device = pdf,
+       units = "in",
+       width = 10,
+       height = 10,
+       dpi = 300)
+
+#Repeat for significant events
+NK_Upreg_4A3_sum_sig = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219 & padj < 0.05) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(nKDs = n_distinct(Sample),
+            Depletion = list(Sample))
+NK_upreg_attributes_sig = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name"),
+                            filters = "ensembl_transcript_id",
+                            values = NK_Upreg_4A3_sum_sig$ENST.ID,
+                            mart = ensembl)
+NK_Upreg_4A3_sum_sig = NK_Upreg_4A3_sum_sig %>% left_join(NK_upreg_attributes_sig, by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  unnest_wider(Depletion,names_sep = "_")
+NK_Upreg_5orMore_sig = NK_Upreg_4A3_sum_sig %>% filter(nKDs >= 5)
+write_csv(NK_Upreg_5orMore_sig,"NMD_targets_up_5_or_more_sig.csv")
+NK_Upreg_10orMore_sig = NK_Upreg_4A3_sum_sig %>% filter(nKDs >= 10)
+write_csv(NK_Upreg_10orMore_sig,"NMD_targets_up_10_or_more_sig.csv")
+
+#Pull the transcripts shared between AQR, SF3B1, SF3B3, and CDC40
+NK_upreg_newNMD_fac_sig = NK_Upreg_4A3 %>% filter(log2FoldChange > 0.3219 &
+                                                        Sample %in% c("AQR","SF3B3","SF3B1","CDC40") &
+                                                        padj < 0.05)
+NK_upreg_newNMD_fac_sum_sig = NK_upreg_newNMD_fac_sig %>% group_by(ENST.ID) %>% summarize(kds = n_distinct(Sample)) %>% 
+  filter(kds == 4)
+NK_upreg_newNMD_fac_sig = NK_upreg_newNMD_fac_sig %>% filter(ENST.ID %in% NK_upreg_newNMD_fac_sum_sig$ENST.ID)
+write_csv(NK_upreg_newNMD_fac_sig,"AQR_SF3B1_SF3B3_CDC40_common_up_sig.csv")
+
+
+NK_4A3_Upreg_upset_table_sig = NK_Upreg_4A3 %>% filter(ENST.ID %in% NK_Upreg_10orMore$ENST.ID &
+                                                           log2FoldChange > 0.3219 & 
+                                                           Sample %in% c("AQR","SF3B3","SF3B1","CDC40") &
+                                                           padj < 0.05) %>% 
+  select(ENST.ID,Sample) %>% 
+  group_by(ENST.ID) %>% 
+  summarise(depletions = list(Sample))
+NK_4A3_upset_sig = ggplot(NK_4A3_Upreg_upset_table_sig)
+NK_4A3_upset_sig = NK_4A3_upset_sig + geom_bar(aes(x = depletions)) +
+  scale_x_upset() +
+  labs(x = "Depletions",
+       y = "Number of Transcripts",
+       caption = "NMD targets 1.25 fold up in EIF4A3 and 10 other KDs") +
+  theme_bw()
+NK_4A3_upset_sig
+ggsave("NMDtargets_up_in_4A3_upset_sig.pdf",
+       plot = NK_4A3_upset_sig,
        device = pdf,
        units = "in",
        width = 10,
