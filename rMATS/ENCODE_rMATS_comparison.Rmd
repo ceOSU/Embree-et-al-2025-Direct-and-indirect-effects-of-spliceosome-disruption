@@ -1906,23 +1906,27 @@ WT5_sum_genelevel = all_WT5_genelevel %>% group_by(Sample,sig_SE) %>%
          prop = number/tot) %>% 
   left_join(Sample_complex,by = "Sample")
 
-Complex_colors = c("Catalytic" = "#1c998b","Early" = "#fe5f55","NA" = "grey")
+Complex_colors = c("Catalytic" = "#1c998b","Early" = "#fe5f55","NA" = "grey","NMD" = "black")
+WT5_level = WT5_sum_genelevel %>% filter(sig_SE == "TRUE") %>% 
+  select(prop,Sample) %>% 
+  arrange(prop)
 WT5_genelevel_prop = ggplot(data = WT5_sum_genelevel %>% filter(sig_SE == "TRUE"))
-WT5_genelevel_prop = WT5_genelevel_prop + geom_col(aes(x = factor(Sample, levels = all_order),
+WT5_genelevel_prop = WT5_genelevel_prop + geom_point(aes(x = factor(Sample, levels = WT5_level$Sample),
                                                        y = prop,
-                                                       fill = Splice_Stage)) +
+                                                       color = Splice_Stage),
+                                                     shape = 18, #diamond shape
+                                                     size = 8) +
   scale_color_manual(values = Complex_colors) +
-  scale_fill_manual(values = Complex_colors) +
   theme_bw() +
   labs(x = element_blank(),
-       y = "Proportion of Genes",
-       title = "Proportion of highly expressed genes undergoing AS",
+       y = "Fraction of Genes",
+       title = "Fraction of highly expressed genes undergoing AS",
        fill = "Spliceosome Stage")
 WT5_genelevel_prop
 ggsave("WT5_AS_genelevel_proption.pdf",
        plot = WT5_genelevel_prop,
        device = pdf,
-       height = 12,
+       height = 6,
        width = 12,
        units = "in",
        dpi = 300)
@@ -1972,15 +1976,18 @@ all_events_summary = all_events_summary %>%
                names_to = "Type",
                values_to = "Number")
 
+all_event_level = all_events_summary %>% filter(Type == "Sig_norm") %>% 
+  select(Number,Sample) %>% 
+  arrange(Number)
 all_events_plot = ggplot(data = all_events_summary)
-all_events_plot = all_events_plot + geom_point(aes(x = factor(Sample, levels = all_order),
+all_events_plot = all_events_plot + geom_point(aes(x = factor(Sample, levels = all_event_level$Sample),
                                                    y = log10(Number),
                                                    shape = factor(Type,
                                                                   levels = c("Sig_norm","Novel_norm"),
                                                                   labels = c("Sig_norm" = "Annotated",
                                                                              "Novel_norm" = "Novel")),
                                                    color = Splice_Stage),
-                                               size = 3) +
+                                               size = 7) +
   scale_color_manual(values = Complex_colors) +
   theme_bw()+
   labs(x = element_blank(),

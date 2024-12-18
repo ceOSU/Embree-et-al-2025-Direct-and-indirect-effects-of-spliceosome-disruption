@@ -4529,25 +4529,25 @@ ratio_tpm_plot = ratio_tpm_plot +   geom_smooth(aes(x = log_p,
   geom_point(aes(x = log_p,
                  y = ratio,
                  color = Splice_Stage),
-             size = 5) +
+             size = 7) +
   geom_text_repel(aes(x = -log10(P),
                        y = ratio,
                        label = Sample,
                        color = Splice_Stage),
                    show.legend = FALSE,
-                   size = 6) +
+                   size = 8) +
   geom_text(aes(x = 25,
-                y = 4,
+                y = 4.2,
                 label = paste0("R=",round(tpm_ratio_cor$estimate,digits = 3))),
                 color = "black",
-                size = 6) +
+                size = 8) +
   geom_text(aes(x = 25,
-                y = 3.8,
+                y = 4,
                 label = paste0("p=",signif(tpm_ratio_cor$p.value,digits = 3))),
                 color = "black",
-                size = 6) +
+                size = 8) +
   scale_color_manual(values = Complex_colors) +
-  labs(x = "-log10(padj)",
+  labs(x = "-log10(p-value)",
        y = "Novel/ Annotated NMD target TPM") +
   theme_bw()
 ratio_tpm_plot
