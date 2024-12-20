@@ -2938,33 +2938,6 @@ shared_AS_novel = shared_AS_novel %>% filter(ensembl_transcript_id %in% Saltzman
 
 
 
-####Make a master list of transcripts in the KDs####
-master_list = tibble(Sample = character())
-for (i in all_GOI) {
-  print(i)
-  master_list = master_list %>% full_join(eval(parse(text = paste0(i,"_full_alltrans"))))
-}
-master_list = master_list %>% select(Sample,log2FoldChange,ENST.ID,baseMean,padj)
-master_list = master_list %>% group_by(Sample, ENST.ID) %>% distinct(ENST.ID, .keep_all = TRUE) %>% ungroup() #removes some rows that got duplicated when making the ENST.ID column
-master_list = master_list %>% pivot_wider(names_from = Sample, values_from = c(log2FoldChange,baseMean,padj),
-                                          names_vary = "slowest",values_fill = NA)
-master_list = master_list %>% left_join(sPTC_list %>% select(transID,PTC), by = c("ENST.ID" = "transID")) %>% 
-  left_join(Saltzman_PE %>% select(ensembl_transcript_id,Isoform),
-                                   by = c("ENST.ID" = "ensembl_transcript_id"))
-master_list = master_list %>% 
-  mutate(PTC = str_replace(PTC,"FALSE","MANE"),
-         PTC = str_replace(PTC,"TRUE","PTC")) %>% 
-  rename(PE = Isoform)
-master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
-                                          "transcript_mane_select"),
-                           filters = "ensembl_transcript_id",
-                           values = master_list$ENST.ID,
-                           mart = ensembl)
-master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
-write_csv(master_list,"KD_DEseq_masterlist.csv")
-
-
-
 ###Look at highly upregulated transcripts####
 upreg_test = c("EIF4A3","EFTUD2","CDC40","SF3B1","AQR")
 for (i in upreg_test) {
@@ -5333,3 +5306,27 @@ ggsave("RP_combined_total_TPM_annotated.pdf",
        units = "in",
        device = pdf,
        dpi = 300)
+
+####Make a master list of transcripts in the KDs####
+master_list = tibble(Sample = character())
+for (i in all_GOI) {
+  print(i)
+  master_list = master_list %>% full_join(eval(parse(text = paste0(i,"_full_alltrans"))))
+}
+master_list = master_list %>% select(Sample,log2FoldChange,ENST.ID,baseMean,padj)
+master_list = master_list %>% group_by(Sample, ENST.ID) %>% distinct(ENST.ID, .keep_all = TRUE) %>% ungroup() #removes some rows that got duplicated when making the ENST.ID column
+master_list = master_list %>% pivot_wider(names_from = Sample, values_from = c(log2FoldChange,baseMean,padj),
+                                          names_vary = "slowest",values_fill = NA)
+master_list = master_list %>% left_join(SMG_PTC_all_isoforms %>% select(ensembl_transcript_id,isoform), by = c("ENST.ID" = "ensembl_transcript_id")) %>% 
+  rename(NMD_list = isoform) %>% 
+  left_join(Saltzman_PE %>% select(ensembl_transcript_id,Isoform),
+            by = c("ENST.ID" = "ensembl_transcript_id"))
+master_list = master_list %>% 
+  rename(PE_list = Isoform)
+master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","external_gene_name",
+                                          "transcript_mane_select"),
+                           filters = "ensembl_transcript_id",
+                           values = master_list$ENST.ID,
+                           mart = ensembl)
+master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
+write_csv(master_list,"KD_DEseq_masterlist.csv")
