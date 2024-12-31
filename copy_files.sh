@@ -48,4 +48,8 @@ cp "$dir"/IsoformSwitch/Combined_analysis/*.R ./IsoformSwitchAnalyzeR/Combined_I
 cp "$dir"/rMATS/*.Rmd "$GR_dir"/rMATS #adds in all of the R markdown workbooks from the rMATS folder. Final plots from rMATS are in ENCODE_rMATS_comparison file
 cp "$dir"/Poison_Exons/*.R "$GR_dir"/rMATS/Poison_Exon_analysis.R
 
+cd "/c/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Final_Manuscript/"
+cp -a Supplemental_Tables/*.xlsx \
+    "$GR_dir"/Supplemental_tables/
+
 echo Done syncing scripts
