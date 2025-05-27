@@ -25,7 +25,7 @@ library(ggrepel)
 ```
  **Date Created**: 12/19/2022
  
- **Date Modified**: 8/6/2024
+ **Date Modified**: 5/26/2025
 
  **Working Directory**: `r getwd()`
  
@@ -1683,6 +1683,7 @@ for (i in all_order) {
 }
 all_cassette_sum = all_cassette_sum %>% left_join(all_PE_res)
 
+select_list = c("AQR","SF3B1","SF3B3","CDC40","SNRPC")
 PE_Colors = c("TRUE" = "#76CEB5","FALSE" = "grey")
 PE_boxplot = ggplot(data = all_cassette_inc)
 PE_boxplot = PE_boxplot + 
@@ -1731,6 +1732,60 @@ PE_boxplot
 ggsave("PE_boxplot_Full.pdf",
        plot = PE_boxplot,
        width = 40,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = cairo_pdf,
+       family = "Arial Unicode MS")
+
+#Filter to select genes
+select_PE_boxplot = ggplot(data = all_cassette_inc %>% filter(Sample %in% select_list))
+select_PE_boxplot = select_PE_boxplot + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_order),
+                   y = corec_ILD,
+                   fill = PE),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = PE_Colors,labels = c("TRUE" = "Poison",
+                                                  "FALSE" = "Cassette")) +
+  scale_color_manual(values = PE_Colors)+
+  geom_label(data = all_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = 0.75,
+                 label = signif(P,digits = 3)),
+             size = 5,
+             alpha = 0.75)+
+  geom_label(data = all_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = Med,
+                 color = PE,
+                 label = round(Med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_label(data = all_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = -0.75,
+                 color = PE,
+                 label = n),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 5,
+             alpha = 0.75) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "▲PE Inclusion",
+       fill = "Exon Type",
+       title = "Cassette exon inclusion")+
+  coord_cartesian(y = c(-1,1))
+select_PE_boxplot
+ggsave("select_PE_boxplot_Full.pdf",
+       plot = select_PE_boxplot,
+       width = 20,
        height = 10,
        units = "in",
        dpi = 300,
@@ -1807,7 +1862,117 @@ ggsave("sig_PE_boxplot.pdf",
        dpi = 300,
        device = cairo_pdf,
        family = "Arial Unicode MS")
+
+#Filter to select genes
+select_sig_PE_boxplot = ggplot(data = sig_cassette %>% filter(Sample %in% select_list))
+select_sig_PE_boxplot = select_sig_PE_boxplot + 
+  geom_boxplot(aes(x = factor(Sample, levels = all_order),
+                   y = corec_ILD,
+                   fill = PE),
+               position = position_dodge2(width = 0.9),
+               width = 0.8,
+               outlier.shape = 21,
+               outlier.alpha = 0.5,
+               outlier.colour = NA,
+               linewidth = 1) +
+  scale_fill_manual(values = PE_Colors,labels = c("TRUE" = "Poison",
+                                                  "FALSE" = "Cassette")) +
+  scale_color_manual(values = PE_Colors)+
+  geom_label(data = sig_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = 0.75,
+                 label = signif(P,digits = 3)),
+             size = 5,
+             alpha = 0.75)+
+  geom_label(data = sig_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = Med,
+                 color = PE,
+                 label = round(Med, digits = 3)),
+             show.legend = F,
+             position = position_dodge2(width = 0.8),
+             size = 5) +
+  geom_label(data = sig_cassette_sum %>% filter(Sample %in% select_list),
+             aes(x = factor(Sample, levels = all_order),
+                 y = -0.75,
+                 color = PE,
+                 label = n),
+             show.legend = F,
+             position = position_dodge2(width = 0.9),
+             size = 5,
+             alpha = 0.75) +
+  theme_bw() + 
+  labs(x = "Sample",
+       y = "▲PE Inclusion",
+       fill = "Exon Type",
+       title = "Cassette exon inclusion")+
+  coord_cartesian(y = c(-1,1))
+select_sig_PE_boxplot
+ggsave("select_sig_PE_boxplot.pdf",
+       plot = select_sig_PE_boxplot,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = cairo_pdf,
+       family = "Arial Unicode MS")
 ```
+
+
+## Plot Change in PSI
+
+I'm going to filter to just the poison exons that intorduce NMD upon inclusion of the exons.
+With these I'll plot the change in percent spliced in that rMATS provides, which will do better than trying to define casette exons to match to. 
+The change in PSI is calculated WT-KD, meaning that a negative value means the exon is more included in the knockdown.
+I'm going to multiply the PSI by -1 so that it makes more sense graphically.
+
+```{r}
+select_SE_events = tibble(Sample = as.character())
+for (i in select_list) {
+  print(i)
+  assign(paste0(i,"_SE_JCEC"),
+         eval(parse(text = paste0(i,"_SE_JCEC"))) %>% 
+           mutate(Sample = i))
+  select_SE_events = select_SE_events %>% full_join(eval(parse(text = paste0(i,"_SE_JCEC"))))
+}
+PE_inclusion_exons = Saltzman_inclusion_exons %>% 
+  mutate(chr = paste0("chr",chromosome_name),
+         start = exon_chrom_start-1,
+         end = exon_chrom_end-1) %>% 
+  dplyr::select(ensembl_gene_id,ensembl_exon_id,start,end,chr)
+PE_SE_events = select_SE_events %>% inner_join(PE_inclusion_exons,by = c("exonStart_0base" = "start",
+                                                                         "exonEnd" = "end")) %>% 
+  mutate(Match = if_else(GeneID == ensembl_gene_id,TRUE,FALSE),
+         corILD = IncLevelDifference * -1)
+PE_SE_events %>% group_by(Sample) %>% summarise(events = n(),genes = n_distinct(GeneID),exons = n_distinct(ensembl_exon_id))
+
+PE_SE_plot = ggplot(data = PE_SE_events %>% filter(Match == TRUE)) +
+  geom_beeswarm(aes(x = Sample,
+                    y = corILD),
+                shape = 20) +
+  geom_boxplot(aes(x = Sample,
+                   y = corILD,
+                   fill = Sample),
+               alpha = 0.6,
+               outlier.shape = NA) +
+  scale_fill_moma_d("VanGogh") +
+  theme_bw() +
+  labs(x = "Sample",
+       y = "▲PE Inclusion",
+       title = "PE inclusion by coord") +
+  coord_cartesian(y = c(-1,1))
+PE_SE_plot
+ggsave("PE_exon_coord_boxplot.pdf",
+       plot = PE_SE_plot,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = cairo_pdf,
+       family = "Arial Unicode MS")
+```
+
+
 
 # Look at the changes in splicing of transcripts with TPM >5 in WT
 

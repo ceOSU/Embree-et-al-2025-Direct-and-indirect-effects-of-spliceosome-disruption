@@ -5330,3 +5330,43 @@ master_annotations = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_
                            mart = ensembl)
 master_list = master_list %>% left_join(master_annotations, by = c("ENST.ID" = "ensembl_transcript_id"))
 write_csv(master_list,"KD_DEseq_masterlist.csv")
+
+
+####Make Revision Figures####
+#Look at EJC independnt NMD targets (i.e. Up in UPF3A/B KD)
+UPF3_DKO <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/EJC independent NMD/3_UPF3dKO_NMD_TRUE_Log2FC_UTRlength_pvalue.xlsx")
+summary(UPF3_DKO$UTRlength)
+UPF3_DKO = UPF3_DKO %>% dplyr::select(tx_id,ensembl_gene_id,`3_utr_start`,`3_utr_end`,UTRlength,NMD)
+select_list = c("AQR","SF3B1","SF3B3","CDC40","SNRPC")
+select_alltrans = AQR_full_alltrans %>% full_join(SF3B1_full_alltrans) %>% full_join(SF3B3_full_alltrans) %>% 
+  full_join(CDC40_full_alltrans) %>% full_join(SNRPC_full_alltrans)
+select_gene_anno = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","transcript_mane_select",
+                                        "transcript_biotype"),
+                         filters = "ensembl_transcript_id",
+                         values = select_alltrans$ENST.ID,
+                         mart = ensembl)
+select_alltrans = select_alltrans %>% left_join(select_gene_anno, by = c("ENST.ID" = "ensembl_transcript_id"))
+select_3UTR = select_alltrans %>% filter(ensembl_gene_id %in% UPF3_DKO$ensembl_gene_id) %>% 
+  mutate(Category = case_when(ENST.ID %in% UPF3_DKO$tx_id ~ "NMD",
+                              str_detect(transcript_mane_select,"NM") ~ "MANE",
+                              TRUE ~ "Filt")) %>% #Problem: many of the NMD targets are also the MANE transcripts
+  filter(Category != "Filt") %>% 
+  group_by(Sample) %>% 
+  distinct(ENST.ID,.keep_all = TRUE) %>% 
+  ungroup()
+select_3UTR %>% group_by(Sample,Category) %>% summarise(n = n(), genes = n_distinct(ensembl_gene_id),trans = n_distinct(ENST.ID))
+
+select_UTR_MANE_plot = ggplot(data = select_3UTR) +
+  geom_boxplot(aes(x = factor(Sample,levels = GOI),
+                   y = log2FoldChange,
+                   fill = Category),
+               position = position_dodge2(width = 0.8)) +
+  theme_bw()
+select_UTR_MANE_plot
+ggsave("3UTR_FC_plot.pdf",
+       plot = select_UTR_MANE_plot,
+       device = pdf,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300)
