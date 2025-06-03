@@ -5337,36 +5337,102 @@ write_csv(master_list,"KD_DEseq_masterlist.csv")
 UPF3_DKO <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/EJC independent NMD/3_UPF3dKO_NMD_TRUE_Log2FC_UTRlength_pvalue.xlsx")
 summary(UPF3_DKO$UTRlength)
 UPF3_DKO = UPF3_DKO %>% dplyr::select(tx_id,ensembl_gene_id,`3_utr_start`,`3_utr_end`,UTRlength,NMD)
-select_list = c("AQR","SF3B1","SF3B3","CDC40","SNRPC")
-select_alltrans = AQR_full_alltrans %>% full_join(SF3B1_full_alltrans) %>% full_join(SF3B3_full_alltrans) %>% 
-  full_join(CDC40_full_alltrans) %>% full_join(SNRPC_full_alltrans)
-select_gene_anno = getBM(attributes = c("ensembl_transcript_id","ensembl_gene_id","transcript_mane_select",
-                                        "transcript_biotype"),
-                         filters = "ensembl_transcript_id",
-                         values = select_alltrans$ENST.ID,
-                         mart = ensembl)
-select_alltrans = select_alltrans %>% left_join(select_gene_anno, by = c("ENST.ID" = "ensembl_transcript_id"))
-select_3UTR = select_alltrans %>% filter(ensembl_gene_id %in% UPF3_DKO$ensembl_gene_id) %>% 
-  mutate(Category = case_when(ENST.ID %in% UPF3_DKO$tx_id ~ "NMD",
-                              str_detect(transcript_mane_select,"NM") ~ "MANE",
-                              TRUE ~ "Filt")) %>% #Problem: many of the NMD targets are also the MANE transcripts
-  filter(Category != "Filt") %>% 
-  group_by(Sample) %>% 
-  distinct(ENST.ID,.keep_all = TRUE) %>% 
+siUPF1 <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/EJC independent NMD/1_WTsiUPF1_NMD_TRUE_Log2FC_UTRlength_pvalue.xlsx")
+siUPF1 = siUPF1 %>% dplyr::select(tx_id,ensembl_gene_id,`3_utr_start`,`3_utr_end`,UTRlength,NMD)
+siUPF2 <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/EJC independent NMD/2_WT_siUPF2_NMD_TRUE_Log2FC_UTRlength_pvalue.xlsx")
+siUPF2 = siUPF2 %>% dplyr::select(tx_id,ensembl_gene_id,`3_utr_start`,`3_utr_end`,UTRlength,NMD)
+no_3UTR_intron <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/3UTR_no_annotatedIntrons_no_novel.tsv", 
+                             delim = "\t", escape_double = FALSE, 
+                             trim_ws = TRUE)
+no_3UTR_intron = no_3UTR_intron %>% mutate(UPF1 = if_else(transcripts %in% siUPF1$tx_id,TRUE,FALSE),
+                                           UPF2 = if_else(transcripts %in% siUPF2$tx_id,TRUE,FALSE),
+                                           UPF3 = if_else(transcripts %in% UPF3_DKO$tx_id,TRUE,FALSE)) %>% 
+  rowwise() %>% 
+  mutate(total = sum(c_across(starts_with("UPF"))),
+         length = end-start) %>% 
   ungroup()
-select_3UTR %>% group_by(Sample,Category) %>% summarise(n = n(), genes = n_distinct(ensembl_gene_id),trans = n_distinct(ENST.ID))
+  
+UTR_NMD = no_3UTR_intron %>% mutate(NMD = case_when(total > 0 ~ "NMD",
+                                                    total == 0 ~ "no NMD",
+                                                    TRUE ~ "filter"),
+                                    bin = case_when(length < 501 ~ "<500",
+                                                    length > 500 & length < 1001 ~ "501-1000",
+                                                    length > 1000 & length < 1501 ~ "1001-1500",
+                                                    length >1500 & length < 2001 ~ "1501-2000",
+                                                    length > 2000 ~ ">2000")) %>% 
+  filter(NMD != "filter")
+UTR_NMD %>% group_by(NMD) %>% summarise(n = n(), transcripts = n_distinct(transcripts),genes = n_distinct(genes))
+summary(UTR_NMD$length)
+select_list = c("UPF1","EIF4A3","AQR","SF3B1","SF3B3","CDC40","SNRPC")
+select_alltrans = AQR_full_alltrans %>% full_join(SF3B1_full_alltrans) %>% full_join(SF3B3_full_alltrans) %>% 
+  full_join(CDC40_full_alltrans) %>% full_join(SNRPC_full_alltrans) %>%
+  full_join(UPF1_full_alltrans) %>% full_join(EIF4A3_full_alltrans)
+UTR_NMD_alltrans = select_alltrans %>% inner_join(UTR_NMD,by=c("ENST.ID" = "transcripts"))
+UTR_NMD_sum = UTR_NMD_alltrans %>% group_by(Sample,NMD) %>% summarise(n = n(), median = median(log2FoldChange))
+UTR_bin_sum = UTR_NMD_alltrans %>% group_by(Sample,NMD,bin) %>% summarise(n = n(), median = median(log2FoldChange))
 
-select_UTR_MANE_plot = ggplot(data = select_3UTR) +
-  geom_boxplot(aes(x = factor(Sample,levels = GOI),
+all_UTR_res = tibble(Sample = as.character(),P= as.numeric())
+for (i in select_list) {
+  assign(paste0(i,"_UTR_res"),
+         wilcox.test(log2FoldChange ~ NMD, data = UTR_NMD_alltrans %>% filter(Sample == i),
+                     exact = FALSE, alternative = "greater")) #Expect NMD to be greater than no NMD
+  all_UTR_res = all_UTR_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_UTR_res$p.value"))))
+}
+
+UTR_plots = ggplot(data = UTR_NMD_alltrans)
+UTR_NMD_plot = UTR_plots +
+  geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
                    y = log2FoldChange,
-                   fill = Category),
+                   fill = factor(NMD,levels = c("no NMD","NMD"))),
                position = position_dodge2(width = 0.8)) +
-  theme_bw()
-select_UTR_MANE_plot
-ggsave("3UTR_FC_plot.pdf",
-       plot = select_UTR_MANE_plot,
-       device = pdf,
+  geom_label(data= UTR_NMD_sum,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = -6,
+                 color = factor(NMD,levels = c("no NMD","NMD")),
+                 label = n),
+             position = position_dodge2(width = 0.8)) +
+  theme_bw() +
+  scale_color_manual(values = c("no NMD" = "#7AE7C7",
+                                "NMD" = "#DD7373")) +
+  scale_fill_manual(values = c("no NMD" = "#7AE7C7",
+                                "NMD" = "#DD7373")) +
+  geom_label(data = all_UTR_res,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = 8,
+                 label = signif(P,digits = 3))) +
+  labs(x = "Sample",
+       fill = "NMD sensitive",
+       color = "NMD sensitive")
+UTR_NMD_plot
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/no_UTR_intron.pdf",
+       plot = UTR_NMD_plot,
        width = 20,
        height = 10,
+       dpi = 300,
        units = "in",
-       dpi = 300)
+       device = pdf)
+
+UTR_bins = UTR_plots +
+  geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = as.factor(bin)),
+               position = position_dodge2(width = 0.8)) +
+  geom_label_repel(data= UTR_bin_sum,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = -6,
+                 color = factor(bin),
+                 label = n),
+             position = position_dodge2(width = 0.8)) +
+  theme_bw() +
+  facet_wrap(facets = "NMD") +
+  labs(x = "Sample",
+       fill = "NMD sensitive",
+       color = "NMD sensitive")
+UTR_bins
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/no_UTR_bins.pdf",
+       plot = UTR_bins,
+       width = 40,
+       height = 10,
+       dpi = 300,
+       units = "in",
+       device = pdf)
