@@ -5436,3 +5436,215 @@ ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Rev
        dpi = 300,
        units = "in",
        device = pdf)
+
+# Look at number of UTR introns
+utr_exon_count <- read_delim("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/ens109_3utr/utr_exon_count.txt", 
+                             delim = "\t", escape_double = FALSE, 
+                             trim_ws = TRUE)
+SMG_PTC_UTRs = SMG_PTC_MANE_alltrans %>% 
+  left_join(utr_exon_count, by = c("ENST.ID" = "Transcript"),relationship = "many-to-one") %>% 
+  filter(!is.na(UTR_exons)) %>% 
+  mutate(UTR_bin = case_when(UTR_intron == 0 ~ "0",
+                             UTR_intron == 1 ~ "1",
+                             UTR_intron == 2 ~ "2",
+                             UTR_intron >= 3 ~ "3 or more"))
+SMG_UTR_sum = SMG_PTC_UTRs %>% filter(Sample %in% select_list) %>% 
+  group_by(Sample,UTR_bin,isoform) %>% summarise(n = n(),median = median(log2FoldChange))
+
+UTR_bin_colors = c("0" = "#d5896f","1" = "#f6ae2d","2" = "#7dcfb6","3 or more" = "#00b2ca")
+PTC_UTR_bins = ggplot(data = SMG_PTC_UTRs %>% filter(Sample %in% select_list & isoform == "NMD")) +
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = UTR_bin),
+               position = position_dodge(width = 0.8),
+               outlier.shape = 21) +
+  
+  theme_bw() +
+  geom_label(data = SMG_UTR_sum %>% filter(Sample %in% select_list & isoform == "NMD"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = -4,
+                label = n,
+                color = UTR_bin),
+            position = position_dodge(width = 0.8),
+            show.legend = FALSE) +
+  geom_label(data = SMG_UTR_sum %>% filter(Sample %in% select_list & isoform == "NMD"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = median,
+                label = round(median,digits = 2),
+                color = UTR_bin),
+            position = position_dodge(width = 0.8),
+            show.legend = FALSE) +
+  labs(x = "Sample",
+       title = "NMD targets",
+       fill = "3' UTR Introns") +
+  scale_color_manual(values = UTR_bin_colors) +
+  scale_fill_manual(values = UTR_bin_colors)
+PTC_UTR_bins
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/NMD_targets_3UTR_intons.pdf",
+       plot = PTC_UTR_bins,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+MANE_UTR_bins = ggplot(data = SMG_PTC_UTRs %>% filter(Sample %in% select_list & isoform == "MANE")) +
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = UTR_bin),
+               position = position_dodge(width = 0.8),
+               outlier.shape = 21) +
+  
+  theme_bw() +
+  geom_label(data = SMG_UTR_sum %>% filter(Sample %in% select_list & isoform == "MANE"),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = -4,
+                 label = n,
+                 color = UTR_bin),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  geom_label(data = SMG_UTR_sum %>% filter(Sample %in% select_list & isoform == "MANE"),
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = median,
+                 label = round(median,digits = 2),
+                 color = UTR_bin),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  labs(x = "Sample",
+       title = "MANE isoforms",
+       fill = "3' UTR Introns") +
+  scale_color_manual(values = UTR_bin_colors) +
+  scale_fill_manual(values = UTR_bin_colors)
+MANE_UTR_bins
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/MANE_targets_3UTR_intons.pdf",
+       plot = MANE_UTR_bins,
+       width = 20,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+SMG_UTR = SMG_PTC_all_isoforms %>% inner_join(utr_exon_count, by = c("ensembl_transcript_id" = "Transcript"))
+UTR_intron_freq = ggplot(data = SMG_UTR %>% filter(isoform != "Other")) +
+  geom_histogram(aes(x = UTR_intron,
+                    fill = isoform),
+                 position = "dodge") +
+  scale_fill_manual(values = all_PTC_colors) +
+  theme_bw()
+UTR_intron_freq
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/PTC_MANE_UTR_freq.pdf",
+       plot = UTR_intron_freq,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+
+SMG_PTC_MANE_UTR = SMG_PTC_MANE_alltrans %>% 
+  left_join(utr_exon_count, by = c("ENST.ID" = "Transcript"),relationship = "many-to-one") %>% 
+  filter(!is.na(UTR_exons))
+SMG_PTC_UTR = SMG_PTC_MANE_UTR %>% filter(isoform == "NMD" & UTR_intron != 0)
+SMG_MANE_UTR = SMG_PTC_MANE_UTR %>% filter(isoform == "MANE" & UTR_intron == 0)
+SMG_PTC_MANE_UTR = SMG_PTC_UTR %>% full_join(SMG_MANE_UTR)
+SMG_PTC_UTR4 = SMG_PTC_MANE_UTR %>% 
+  mutate(UTR_bin = case_when(UTR_intron == 0 ~ "MANE",
+                             UTR_intron == 1 ~ "1",
+                             UTR_intron == 2 ~ "2",
+                             UTR_intron == 3 ~ "3",
+                             UTR_intron >= 4 ~ "4 or more"))
+SMG_UTR4_sum = SMG_PTC_UTR4 %>% filter(Sample %in% select_list) %>% 
+  group_by(Sample,UTR_bin,isoform) %>% summarise(n = n(),median = median(log2FoldChange))
+SMG_PTC_UTR5 = SMG_PTC_MANE_UTR %>% 
+  mutate(UTR_bin = case_when(UTR_intron == 0 ~ "MANE",
+                             UTR_intron == 1 ~ "1",
+                             UTR_intron == 2 ~ "2",
+                             UTR_intron == 3 ~ "3",
+                             UTR_intron == 4 ~ "4",
+                             UTR_intron >= 5 ~ "5 or more"))
+SMG_UTR5_sum = SMG_PTC_UTR5 %>% filter(Sample %in% select_list) %>% 
+  group_by(Sample,UTR_bin,isoform) %>% summarise(n = n(),median = median(log2FoldChange))
+
+UTR4_colors = c("MANE" = "#663171",
+                "1" = "#f15bb5",
+                "2" = "#fee440",
+                "3" = "#00f5d4",
+                "4 or more" = "#00bbf9")
+UTR5_colors = c("MANE" = "#663171",
+                "1" = "#f15bb5",
+                "2" = "#fee440",
+                "3" = "#00f5d4",
+                "4" = "#00bbf9",
+                "5 or more" = "#0081a7")
+UTR_levels = c("MANE","1","2","3","4","4 or more","5 or more")
+UTR4_plot = ggplot(data = SMG_PTC_UTR4 %>% filter(Sample %in% select_list)) +
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = factor(UTR_bin,levels = UTR_levels)),
+               position = position_dodge(width = 0.8),
+               outlier.shape = 21,
+               outlier.alpha = 0.7) +
+  
+  theme_bw() +
+  geom_label(data = SMG_UTR4_sum,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = -4,
+                 label = n,
+                 color = factor(UTR_bin,levels = UTR_levels)),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  geom_label(data = SMG_UTR4_sum,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = median,
+                 label = round(median,digits = 2),
+                 color = factor(UTR_bin,levels = UTR_levels)),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  labs(x = "Sample",
+       title = "NMD isoforms",
+       fill = "3' UTR Introns") +
+  scale_color_manual(values = UTR4_colors) +
+  scale_fill_manual(values = UTR4_colors)
+UTR4_plot
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/3UTR_intons_4plus.pdf",
+       plot = UTR4_plot,
+       width = 30,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)
+UTR5_plot = ggplot(data = SMG_PTC_UTR5 %>% filter(Sample %in% select_list)) +
+  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
+                   y = log2FoldChange,
+                   fill = factor(UTR_bin,levels = UTR_levels)),
+               position = position_dodge(width = 0.8),
+               outlier.shape = 21,
+               outlier.alpha = 0.7) +
+  
+  theme_bw() +
+  geom_label(data = SMG_UTR5_sum,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = -4,
+                 label = n,
+                 color = factor(UTR_bin,levels = UTR_levels)),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  geom_label(data = SMG_UTR5_sum,
+             aes(x = factor(Sample, levels = all_GOI),
+                 y = median,
+                 label = round(median,digits = 2),
+                 color = factor(UTR_bin,levels = UTR_levels)),
+             position = position_dodge(width = 0.8),
+             show.legend = FALSE) +
+  labs(x = "Sample",
+       title = "NMD isoforms",
+       fill = "3' UTR Introns") +
+  scale_color_manual(values = UTR5_colors) +
+  scale_fill_manual(values = UTR5_colors)
+UTR5_plot
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/3UTR_intons_5plus.pdf",
+       plot = UTR5_plot,
+       width = 30,
+       height = 10,
+       units = "in",
+       dpi = 300,
+       device = pdf)

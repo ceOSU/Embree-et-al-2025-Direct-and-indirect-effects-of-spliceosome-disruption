@@ -1970,6 +1970,9 @@ ggsave("PE_exon_coord_boxplot.pdf",
        dpi = 300,
        device = cairo_pdf,
        family = "Arial Unicode MS")
+
+select_PE <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/select_PE.xlsx")
+
 ```
 
 
@@ -1985,6 +1988,7 @@ I'm using the list of genes with significant splicing changes and seeing how man
 main_fig_list = c("MAGOH","EIF4A3","UPF1","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3")
 hmart = useMart("ensembl")
 hmart = useDataset("hsapiens_gene_ensembl", mart = hmart)
+attributes = listAttributes(mart = hmart)
 all_WT_sig = tibble(Sample = character())
 for (i in all_order) {
   print(i)
@@ -2547,5 +2551,13 @@ ggsave("SI_Sig_stacked_JCEC.pdf",
        height = 10,
        units = "in",
        dpi = 300)
+```
+
+```{r}
+Saltzman_SC = getBM(attributes = c("ensembl_transcript_id","3_utr_end","end_position","transcript_end","cds_end"),
+                    filters = "ensembl_transcript_id",
+                    values = Saltzman_inclusion_exons$ensembl_transcript_id,
+                    mart = hmart)
+Saltzman_inclusion_exons = Saltzman_inclusion_exons %>% left_join(Saltzman_SC)
 ```
 
