@@ -25,7 +25,7 @@ library(ggrepel)
 ```
  **Date Created**: 12/19/2022
  
- **Date Modified**: 5/26/2025
+ **Date Modified**: 6/17/2025
 
  **Working Directory**: `r getwd()`
  
@@ -1683,7 +1683,7 @@ for (i in all_order) {
 }
 all_cassette_sum = all_cassette_sum %>% left_join(all_PE_res)
 
-select_list = c("AQR","SF3B1","SF3B3","CDC40","SNRPC")
+select_list = c("UPF1","EIF4A3","AQR","SF3B1","SF3B3","CDC40","SNRPC")
 PE_Colors = c("TRUE" = "#76CEB5","FALSE" = "grey")
 PE_boxplot = ggplot(data = all_cassette_inc)
 PE_boxplot = PE_boxplot + 
@@ -1807,6 +1807,7 @@ for (i in all_order) {
                                           exact = FALSE, alternative = "less")) #use less because we expect other cassette exons to be lower included than PE
   sig_cassette_res = sig_cassette_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_sig_PE_res$p.value"))))
 }
+sig_cassette_res = sig_cassette_res %>% mutate(padj = p.adjust(P,method = "BH"))
 sig_cassette_sum = sig_cassette_sum %>% left_join(sig_cassette_res)
 
 
@@ -1827,7 +1828,7 @@ sig_PE_boxplot = sig_PE_boxplot +
   geom_label(data = sig_cassette_sum,
              aes(x = factor(Sample, levels = all_order),
                  y = 0.75,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 5,
              alpha = 0.75)+
   geom_label(data = sig_cassette_sum %>% filter(Sample %in% all_order),
@@ -1881,7 +1882,7 @@ select_sig_PE_boxplot = select_sig_PE_boxplot +
   geom_label(data = sig_cassette_sum %>% filter(Sample %in% select_list),
              aes(x = factor(Sample, levels = all_order),
                  y = 0.75,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 5,
              alpha = 0.75)+
   geom_label(data = sig_cassette_sum %>% filter(Sample %in% select_list),
@@ -1973,6 +1974,79 @@ ggsave("PE_exon_coord_boxplot.pdf",
 
 select_PE <- read_excel("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/select_PE.xlsx")
 
+
+EIF4A2_sig = select_SE_events %>% filter(geneSymbol == "EIF4A2") %>% filter(FDR < 0.05)
+EIF4A2_sum = EIF4A2_sig %>% group_by(Sample) %>% summarise(n = n(),med = median(IncLevelDifference))
+EIF4A2_plot = ggplot(EIF4A2_sig) +
+  geom_boxplot(aes(x = factor(Sample,levels = all_order),
+                   y = IncLevelDifference)) +
+  geom_text(data = EIF4A2_sum,
+            aes(x = factor(Sample,levels = all_order),
+                y = -1,
+                label = n)) +
+  geom_label(data = EIF4A2_sum,
+             aes(x = factor(Sample,levels = all_order),
+                 y = med,
+                 label = round(med,digits = 2))) +
+  theme_bw() +
+  coord_cartesian(ylim = c(-1,1))
+EIF4A2_plot
+ggsave("EIF4A2_SE_ILD.pdf",
+       plot = EIF4A2_plot,
+       device = pdf,
+       width = 10,
+       height = 10,
+       units = "in",
+       dpi = 300)
+
+#Try using Bradley PE coordinates
+thomas_S4_cleaned <- read_csv("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/thomas_S4_cleaned.csv")
+thomas_S4_cleaned = thomas_S4_cleaned %>% dplyr::select(geneName,chr...7,chromStart_38) %>%
+  rename(chr = chr...7) %>% 
+  mutate(PE_start = chromStart_38 -1)
+thomas_PE_events = select_SE_events %>% inner_join(thomas_S4_cleaned,by = c("exonStart_0base" = "PE_start"))
+thomas_PE_events = thomas_PE_events %>% mutate(cor_ILD = IncLevelDifference * -1) %>% filter(FDR < 0.05)
+end_coords = getBM(attributes = c("ensembl_gene_id","ensembl_transcript_id","transcript_biotype",
+                                  "ensembl_exon_id","exon_chrom_start","exon_chrom_end"),
+                   filters = "ensembl_gene_id",
+                   values = thomas_PE_events$GeneID,
+                   mart = hmart)
+end_coords = end_coords %>% filter(transcript_biotype == "nonsense_mediated_decay") %>%
+  mutate(exon_start = exon_chrom_start -1)
+thomas_PE_events = thomas_PE_events %>% left_join(end_coords,by = c("GeneID" = "ensembl_gene_id",
+                                                                    "exonStart_0base" = "exon_start"),
+                                                  relationship = "many-to-many") %>% 
+  mutate(match = if_else(exonEnd == exon_chrom_end,TRUE,FALSE))
+thomas_PE_events = thomas_PE_events %>% filter(match == TRUE)
+thomas_sum = thomas_PE_events %>% group_by(Sample) %>% summarise(n = n(),med = median(cor_ILD))
+
+thomas_plot = ggplot(data = thomas_PE_events) +
+  geom_boxplot(aes(x = factor(Sample, levels = all_order),
+                   y = cor_ILD,
+                   fill = Sample),
+               outlier.shape = 21) +
+  theme_bw() +
+  geom_label(data = thomas_sum,
+            aes(x = factor(Sample, levels = all_order),
+                y = -0.5,
+                color = Sample,
+                label = n),
+            show.legend = FALSE) +
+  geom_label(data = thomas_sum,
+             aes(x = factor(Sample, levels = all_order),
+                 y = med,
+                 color = Sample,
+                 label = med),
+             show.legend = FALSE) +
+  labs(x = "Sample",
+       y = "Delta PSI")
+thomas_plot
+ggsave("Thomas_PE_inclusion.pdf",
+       plot = thomas_plot,
+       device = pdf,
+       width = 7,
+       height = 5,
+       dpi = 300)
 ```
 
 
@@ -1986,9 +2060,9 @@ I'm using the list of genes with significant splicing changes and seeing how man
 ```{r import alltrans dataset and manipulate data}
 
 main_fig_list = c("MAGOH","EIF4A3","UPF1","AQR","RBM22","EFTUD2","SNRNP200","SF3B1","SF3B3")
-hmart = useMart("ensembl")
-hmart = useDataset("hsapiens_gene_ensembl", mart = hmart)
-attributes = listAttributes(mart = hmart)
+hmart =  useMart("ensembl",host = "https://feb2023.archive.ensembl.org") #use version 109 of ensembl
+hmart <- useDataset("hsapiens_gene_ensembl",mart=hmart)
+attributes <- listAttributes(hmart)
 all_WT_sig = tibble(Sample = character())
 for (i in all_order) {
   print(i)
@@ -2554,7 +2628,8 @@ ggsave("SI_Sig_stacked_JCEC.pdf",
 ```
 
 ```{r}
-Saltzman_SC = getBM(attributes = c("ensembl_transcript_id","3_utr_end","end_position","transcript_end","cds_end"),
+Saltzman_SC = getBM(attributes = c("ensembl_transcript_id","3_utr_end","end_position","transcript_end",
+                                   "cds_end","strand"),
                     filters = "ensembl_transcript_id",
                     values = Saltzman_inclusion_exons$ensembl_transcript_id,
                     mart = hmart)

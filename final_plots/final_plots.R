@@ -949,6 +949,7 @@ for (i in all_GOI) {
                                           exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
   PE_res = PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PE_res$p.value"))))
 }
+PE_res = PE_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 PE_FC_sum = PE_FC_sum %>% left_join(PE_res, by = "Sample")
 PE_pres_sum = PE_FC_sum %>% filter(Sample %in% Pres_KD)
 
@@ -973,7 +974,7 @@ PE_boxplot = PE_boxplot +
   geom_text(data = PE_pres_sum %>% filter(Sample %in% Pres_KD & isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 9,
              color = "black",
             show.legend = F)+
@@ -1001,7 +1002,7 @@ PE_boxplot = PE_boxplot +
        fill = "isoform Type")+
   coord_cartesian(y = c(-4,4))
 PE_boxplot
-ggsave("PE_boxplot_FC.pdf",
+ggsave("PE_boxplot_FC_padj.pdf",
        device = pdf,
        plot = PE_boxplot,
        width = 22,
@@ -1025,7 +1026,7 @@ full_PE_boxplot = full_PE_boxplot +
   geom_text(data = PE_FC_sum %>% filter(isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 9,
              color = "black")+
   geom_label(data = PE_FC_sum %>% filter(Sample %in% all_GOI),
@@ -1052,7 +1053,7 @@ full_PE_boxplot = full_PE_boxplot +
        fill = "isoform Type")+
   coord_cartesian(y = c(-4,4))
 full_PE_boxplot
-ggsave("full_PE_boxplot_Full.pdf",
+ggsave("full_PE_boxplot_Full_padj.pdf",
        device = pdf,
        plot = full_PE_boxplot,
        width = 40,
@@ -1093,6 +1094,7 @@ for (i in all_GOI) {
                                           exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
   Saltzman_PE_res = Saltzman_PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_PE_res$p.value"))))
 }
+Saltzman_PE_res = Saltzman_PE_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 Saltzman_alltrans_sum = Saltzman_alltrans_sum %>% left_join(Saltzman_PE_res, by = "Sample")
 
 
@@ -1114,7 +1116,7 @@ Saltzman_PE_boxplot = Saltzman_PE_boxplot +
   geom_text(data = Saltzman_alltrans_sum %>% filter(Isoform == "NMD"),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1142,7 +1144,7 @@ Saltzman_PE_boxplot = Saltzman_PE_boxplot +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 Saltzman_PE_boxplot
-ggsave("Saltzman_PE_boxplot_Full.pdf",
+ggsave("Saltzman_PE_boxplot_Full_padj.pdf",
        device = pdf,
        plot = Saltzman_PE_boxplot,
        width = 40,
@@ -1166,7 +1168,7 @@ Saltzman_PE_boxplot_short = Saltzman_PE_boxplot_short +
   geom_text(data = Saltzman_alltrans_sum %>% filter(Sample %in% Pres_KD),
              aes(x = factor(Sample, levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1194,7 +1196,7 @@ Saltzman_PE_boxplot_short = Saltzman_PE_boxplot_short +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 Saltzman_PE_boxplot_short
-ggsave("Saltzman_PE_boxplot_main_fig.pdf",
+ggsave("Saltzman_PE_boxplot_main_fig_padj.pdf",
        device = pdf,
        plot = Saltzman_PE_boxplot_short,
        width = 22,
@@ -1248,6 +1250,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "greater"))
   all_ASres = all_ASres %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_AS_res$p.value"))))
 }
+all_ASres = all_ASres %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 AS_MANE_sum = AS_MANE_sum %>% left_join(all_ASres, by = "Sample")
 
 AS_colors = c("TRUE" = "#6DC5B9",
@@ -1273,7 +1276,7 @@ AS_boxplot = AS_boxplot +
             aes(x = factor(Sample,
                            levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
              size = 7,
             show.legend = F,
             color = "black")+
@@ -1303,7 +1306,7 @@ AS_boxplot = AS_boxplot +
        fill = "Gene Type")+
   coord_cartesian(y = c(-4,4))
 AS_boxplot
-ggsave("AS_boxplot_FC_plot.pdf",
+ggsave("AS_boxplot_FC_plot_padj.pdf",
        device = pdf,
        plot = AS_boxplot,
        width = 22,
@@ -1329,7 +1332,7 @@ full_AS_boxplot = full_AS_boxplot +
             aes(x = factor(Sample,
                            levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             color = "black",
             show.legend = F)+
@@ -1359,7 +1362,7 @@ full_AS_boxplot = full_AS_boxplot +
        fill = "Gene Type")+
   coord_cartesian(y = c(-4,4))
 full_AS_boxplot
-ggsave("full_AS_boxplot_FC_plot.pdf",
+ggsave("full_AS_boxplot_FC_plot_padj.pdf",
        device = pdf,
        plot = full_AS_boxplot,
        width = 40,
@@ -1398,6 +1401,8 @@ for (i in all_GOI) {
   AS_only_res = AS_only_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_ASonly_res$p.value"))))
   no_AS_res = no_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noAS_res$p.value"))))
 }
+AS_only_res = AS_only_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
+no_AS_res = no_AS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 AS_only_sum = AS_only_sum %>% left_join(AS_only_res, by = "Sample")
 no_AS_sum = no_AS_sum %>% left_join(no_AS_res, by = "Sample")
 
@@ -1423,7 +1428,7 @@ no_AS_boxplot = no_AS_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1454,7 +1459,7 @@ no_AS_boxplot = no_AS_boxplot +
        title = "Genes with no AS events")+
   coord_cartesian(y = c(-4,4))
 no_AS_boxplot
-ggsave("no_AS_boxplot_FC_plot.pdf",
+ggsave("no_AS_boxplot_FC_plot_padj.pdf",
        device = pdf,
        plot = no_AS_boxplot,
        width = 40,
@@ -1480,7 +1485,7 @@ no_AS_main_boxplot = no_AS_main_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1511,7 +1516,7 @@ no_AS_main_boxplot = no_AS_main_boxplot +
        title = "Genes with no AS events")+
   coord_cartesian(y = c(-4,4))
 no_AS_main_boxplot
-ggsave("no_AS_main_boxplot_FC_plot.pdf",
+ggsave("no_AS_main_boxplot_FC_padj.pdf",
        device = pdf,
        plot = no_AS_main_boxplot,
        width = 22,
@@ -1537,7 +1542,7 @@ only_AS_boxplot = only_AS_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1568,7 +1573,7 @@ only_AS_boxplot = only_AS_boxplot +
        title = "Genes with AS events")+
   coord_cartesian(y = c(-4,4))
 only_AS_boxplot
-ggsave("only_AS_boxplot_FC_plot.pdf",
+ggsave("only_AS_boxplot_FC_padj.pdf",
        device = pdf,
        plot = only_AS_boxplot,
        width = 40,
@@ -1594,7 +1599,7 @@ only_AS_main_boxplot = only_AS_main_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1625,7 +1630,7 @@ only_AS_main_boxplot = only_AS_main_boxplot +
        title = "Genes with AS events")+
   coord_cartesian(y = c(-4,4))
 only_AS_main_boxplot
-ggsave("only_AS_main_boxplot_FC_plot.pdf",
+ggsave("only_AS_main_boxplot_FC_padj.pdf",
        device = pdf,
        plot = only_AS_main_boxplot,
        width = 22,
@@ -1657,6 +1662,8 @@ for (i in all_GOI) {
   SE_res = SE_res %>% add_row(Sample = i, P_SE = eval(parse(text = paste0(i,"_AS_SE_res$p.value"))))
   noAS_res = noAS_res %>% add_row(Sample = i, P_noAS = eval(parse(text = paste0(i,"_noAS_res$p.value"))))
 }
+SE_res = SE_res %>% mutate(SE_padj = p.adjust(P_SE,method = "bonferroni"))
+noAS_res = noAS_res %>% mutate(noAS_padj = p.adjust(P_noAS,method = "bonferroni"))
 SE_AS_res_combined = SE_res %>% left_join(noAS_res)
 SE_AS_only_sum = SE_AS_combined %>% group_by(Sample,Gene_type) %>% 
   summarise(n = n(),
@@ -1688,7 +1695,7 @@ SE_AS_plot = SE_AS_plot + geom_boxplot(aes(x = factor(Sample,
                   aes(x = factor(Sample,
                            levels = all_GOI),
                       y = 3,
-                      label = paste0("P(SE)=",signif(P_SE,digits = 3))),
+                      label = paste0("P(SE)=",signif(SE_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#FFC20A",
@@ -1697,7 +1704,7 @@ SE_AS_plot = SE_AS_plot + geom_boxplot(aes(x = factor(Sample,
                   aes(x = factor(Sample,
                            levels = all_GOI),
                       y = 4,
-                      label = paste0("P(noAS)=",signif(P_noAS,digits = 3))),
+                      label = paste0("P(noAS)=",signif(noAS_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#DE4D86",
@@ -1728,7 +1735,7 @@ SE_AS_plot = SE_AS_plot + geom_boxplot(aes(x = factor(Sample,
        fill = "Gene Type")+
   coord_cartesian(y = c(-4,4))
 SE_AS_plot
-ggsave("Single_Exon_and_AS_plot.pdf",
+ggsave("Single_Exon_and_AS_padj.pdf",
        device = pdf,
        plot = SE_AS_plot,
        width = 40,
@@ -1759,6 +1766,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   no_ASorNMD_res = no_ASorNMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noASorNMD_res$p.value"))))
 }
+no_ASorNMD_res = no_ASorNMD_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noAS_noNMD_sum = noAS_noNMD_sum %>% left_join(no_ASorNMD_res, by = "Sample")
 
 noAS_noNMD_colors = c("MANE" = "#F69F8E","Other" = "#ED6145")
@@ -1780,7 +1788,7 @@ noAS_noNMD_boxplot = noAS_noNMD_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1811,7 +1819,7 @@ noAS_noNMD_boxplot = noAS_noNMD_boxplot +
        title = "Genes with no AS events or NMD isoforms")+
   coord_cartesian(y = c(-4,4))
 noAS_noNMD_boxplot
-ggsave("noAS_noNMD_boxplot_FC_plot.pdf",
+ggsave("noAS_noNMD_boxplot_FC_padj.pdf",
        device = pdf,
        plot = noAS_noNMD_boxplot,
        width = 40,
@@ -1837,7 +1845,7 @@ noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black")+
@@ -1868,7 +1876,7 @@ noAS_noNMD_main_boxplot = noAS_noNMD_main_boxplot +
        title = "Genes with no AS events or NMD isoforms")+
   coord_cartesian(y = c(-4,4))
 noAS_noNMD_main_boxplot
-ggsave("noAS_noNMD_main_boxplot_FC_plot.pdf",
+ggsave("noAS_noNMD_main_boxplot_FC_padj.pdf",
        device = pdf,
        plot = noAS_noNMD_main_boxplot,
        width = 22,
@@ -1897,6 +1905,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   AS_noNMD_res = AS_noNMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_AS_noNMD_res$p.value"))))
 }
+AS_noNMD_res = AS_noNMD_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 AS_noNMD_sum = AS_noNMD_sum %>% left_join(AS_noNMD_res, by = "Sample")
 
 AS_noNMD_colors = c("MANE" = "#86C1B9","Other" = "#3A9286")
@@ -1918,7 +1927,7 @@ AS_noNMD_boxplot = AS_noNMD_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
              color = "black")+
@@ -1949,7 +1958,7 @@ AS_noNMD_boxplot = AS_noNMD_boxplot +
        title = "Genes with AS events but no NMD isoforms")+
   coord_cartesian(y = c(-4,4))
 AS_noNMD_boxplot
-ggsave("AS_noNMD_boxplot_FC_plot.pdf",
+ggsave("AS_noNMD_boxplot_FC_padj.pdf",
        device = pdf,
        plot = AS_noNMD_boxplot,
        width = 40,
@@ -1973,6 +1982,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   noAS_NMD_res = noAS_NMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noAS_NMD_res$p.value"))))
 }
+noAS_NMD_res = noAS_NMD_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noAS_NMD_sum = noAS_NMD_sum %>% left_join(noAS_NMD_res, by = "Sample")
 
 noAS_NMD_colors = c("FALSE" = "#663171","TRUE" = "#ea7428")
@@ -1996,7 +2006,7 @@ noAS_NMD_boxplot = noAS_NMD_boxplot +
              aes(x = factor(Sample,
                             levels = all_GOI),
                  y = 3,
-                 label = signif(P,digits = 3)),
+                 label = signif(padj,digits = 3)),
              size = 7,
              show.legend = F,
             color = "black") +
@@ -2027,7 +2037,7 @@ noAS_NMD_boxplot = noAS_NMD_boxplot +
        title = "Genes with no AS events on the PTC list")+
   coord_cartesian(y = c(-4,4))
 noAS_NMD_boxplot
-ggsave("noAS_NMD_boxplot_FC_plot.pdf",
+ggsave("noAS_NMD_boxplot_FC_padj.pdf",
        device = pdf,
        plot = noAS_NMD_boxplot,
        width = 40,
@@ -2282,6 +2292,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   all_noPTC_res = all_noPTC_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noPTC_res$p.value"))))
 } #Do p-value calculation
+all_noPTC_res = all_noPTC_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noPTC_NMD_summary = noPTC_NMD_summary %>% left_join(all_noPTC_res)
 
 noPTC_NMD_colors = c("NMD" = "#EBB028",
@@ -2302,7 +2313,7 @@ noPTC_NMD_boxplot = noPTC_NMD_boxplot +
   geom_text(data = noPTC_NMD_summary %>% filter(isoform == "MANE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             color = "black")+
   geom_label(data = noPTC_NMD_summary,
@@ -2329,7 +2340,7 @@ noPTC_NMD_boxplot = noPTC_NMD_boxplot +
        fill = "isoform Type")+
   coord_cartesian(y = c(-4,4))
 noPTC_NMD_boxplot
-ggsave("noPTC_NMD_boxplot.pdf",
+ggsave("noPTC_NMD_boxplot_padj.pdf",
        device = pdf,
        plot = noPTC_NMD_boxplot,
        width = 40,
@@ -2363,6 +2374,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   all_noPTC_noAS_res = all_noPTC_noAS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noPTC_noAS_res$p.value"))))
 } #Do p-value calculation
+all_noPTC_noAS_res = all_noPTC_noAS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noPTC_noAS_NMD_summary = noPTC_noAS_NMD_summary %>% left_join(all_noPTC_noAS_res)
 
 noPTC_noAS_NMD_colors = c("NMD" = "#F1C86A",
@@ -2383,7 +2395,7 @@ noPTC_noAS_NMD_boxplot = noPTC_noAS_NMD_boxplot +
   geom_text(data = noPTC_noAS_NMD_summary %>% filter(isoform == "MANE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             color = "black")+
   geom_label(data = noPTC_noAS_NMD_summary,
@@ -2410,7 +2422,7 @@ noPTC_noAS_NMD_boxplot = noPTC_noAS_NMD_boxplot +
        fill = "isoform Type")+
   coord_cartesian(y = c(-4,4))
 noPTC_noAS_NMD_boxplot
-ggsave("noPTC_noAS_NMD_boxplot.pdf",
+ggsave("noPTC_noAS_NMD_boxplot_padj.pdf",
        device = pdf,
        plot = noPTC_noAS_NMD_boxplot,
        width = 40,
@@ -2444,6 +2456,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   all_noPTC_AS_res = all_noPTC_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noPTC_AS_res$p.value"))))
 } #Do p-value calculation
+all_noPTC_AS_res = all_noPTC_AS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noPTC_AS_NMD_summary = noPTC_AS_NMD_summary %>% left_join(all_noPTC_AS_res)
 
 noPTC_AS_NMD_colors = c("NMD" = "#CC9C00",
@@ -2464,7 +2477,7 @@ noPTC_AS_NMD_boxplot = noPTC_AS_NMD_boxplot +
   geom_text(data = noPTC_AS_NMD_summary %>% filter(isoform == "MANE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             color = "black")+
   geom_label(data = noPTC_AS_NMD_summary,
@@ -2491,7 +2504,7 @@ noPTC_AS_NMD_boxplot = noPTC_AS_NMD_boxplot +
        fill = "isoform Type")+
   coord_cartesian(y = c(-4,4))
 noPTC_AS_NMD_boxplot
-ggsave("noPTC_AS_NMD_boxplot.pdf",
+ggsave("noPTC_AS_NMD_boxplot_padj.pdf",
        device = pdf,
        plot = noPTC_AS_NMD_boxplot,
        width = 40,
@@ -2528,6 +2541,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   all_noPTC_AS_res = all_noPTC_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_noPTC_AS_res$p.value"))))
 } #Do p-value calculation
+all_noPTC_AS_res = all_noPTC_AS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 noPTC_AS_tsl_summary = noPTC_AS_tsl_summary %>% left_join(all_noPTC_AS_res)
 
 noPTC_AS_tsl_colors = c("Other" = "#274C91",
@@ -2548,7 +2562,7 @@ noPTC_AS_tsl_boxplot = noPTC_AS_tsl_boxplot +
   geom_text(data = noPTC_AS_tsl_summary %>% filter(Isoform == "MANE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             color = "black")+
   geom_label(data = noPTC_AS_tsl_summary,
@@ -2575,7 +2589,7 @@ noPTC_AS_tsl_boxplot = noPTC_AS_tsl_boxplot +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 noPTC_AS_tsl_boxplot
-ggsave("noPTC_AS_tsl_boxplot.pdf",
+ggsave("noPTC_AS_tsl_boxplot_padj.pdf",
        device = pdf,
        plot = noPTC_AS_tsl_boxplot,
        width = 40,
@@ -2607,6 +2621,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less"))
   all_MANE_NMD_res = all_MANE_NMD_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_MANE_NMD_res$p.value"))))
 } #Do p-value calculation
+all_MANE_NMD_res = all_MANE_NMD_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 all_MANE_NMD_summary = all_MANE_NMD_summary %>% left_join(all_MANE_NMD_res)
 
 MANE_NMD_colors = c("Other" = "#542344",
@@ -2627,7 +2642,7 @@ MANE_NMD_boxplot = MANE_NMD_boxplot +
   geom_text(data = all_MANE_NMD_summary %>% filter(isoform == "MANE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 8,
             color = "black")+
   geom_label(data = all_MANE_NMD_summary,
@@ -2652,7 +2667,7 @@ MANE_NMD_boxplot = MANE_NMD_boxplot +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 MANE_NMD_boxplot
-ggsave("MANE_NMD_boxplot.pdf",
+ggsave("MANE_NMD_boxplot_padj.pdf",
        device = pdf,
        plot = MANE_NMD_boxplot,
        width = 40,
@@ -2682,6 +2697,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "greater"))
   all_MANE_res = all_MANE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_MANE_res$p.value"))))
 } #Do p-value calculation
+all_MANE_res = all_MANE_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 all_MANE_summary = all_MANE_summary %>% left_join(all_MANE_res)
 
 all_MANE_colors = c("NMD" = "#F27D2E",
@@ -2702,7 +2718,7 @@ MANE_boxplot = MANE_boxplot +
   geom_text(data = all_MANE_summary %>% filter(NMD == "NMD"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 8,
             color = "black")+
   geom_label(data = all_MANE_summary,
@@ -2727,7 +2743,7 @@ MANE_boxplot = MANE_boxplot +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 MANE_NMD_boxplot
-ggsave("MANE_boxplot.pdf",
+ggsave("MANE_boxplot_padj.pdf",
        device = pdf,
        plot = MANE_boxplot,
        width = 40,
@@ -3297,6 +3313,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "greater")) #greater because we expect the non-spliced to be higher
   full_GL_AS_res = full_GL_AS_res %>% add_row(Sample = i,P = eval(parse(text = paste0(i,"_GL_AS_res$p.value"))))
 }
+full_GL_AS_res = full_GL_AS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 full_GL_AS_summary = GL_AS_combined %>% group_by(Sample,AS_gene) %>% 
   summarise(n = n(),
             med = median(log2FoldChange)) %>% 
@@ -3337,7 +3354,7 @@ GL_AS_box = GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
   geom_text(data = full_GL_AS_summary %>% filter(AS_gene == "TRUE"),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P, digits = 3)),
+                label = signif(padj, digits = 3)),
             show.legend = F,
             size = 8,
             color = "black") +
@@ -3347,7 +3364,7 @@ GL_AS_box = GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
   coord_cartesian(ylim = c(-4,4)) +
   theme_bw()
 GL_AS_box
-ggsave("Gene_level_AS_boxplot.pdf",
+ggsave("Gene_level_AS_boxplot_padj.pdf",
        plot = GL_AS_box,
        width = 40,
        height = 10,
@@ -3390,7 +3407,7 @@ MF_GL_AS_box = MF_GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_G
   geom_text(data = full_GL_AS_summary %>% filter(AS_gene == "TRUE" & Sample %in% Pres_KD),
             aes(x = factor(Sample, levels = all_GOI),
                 y = 3,
-                label = signif(P, digits = 3)),
+                label = signif(padj, digits = 3)),
             show.legend = F,
             size = 8,
             color = "black") +
@@ -3400,7 +3417,7 @@ MF_GL_AS_box = MF_GL_AS_box + geom_boxplot(aes(x = factor(Sample, levels = all_G
   coord_cartesian(ylim = c(-4,4)) +
   theme_bw()
 MF_GL_AS_box
-ggsave("Main_fig_Gene_level_AS_boxplot.pdf",
+ggsave("Main_fig_Gene_level_AS_boxplot_padj.pdf",
        plot = MF_GL_AS_box,
        width = 20,
        height = 10,
@@ -3428,8 +3445,11 @@ for (i in all_GOI) {
   full_SMG_PTC_res = full_SMG_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_SMG_PTC_res$p.value"))),
                                                   P_MANE = eval(parse(text = paste0(i,"_MANE_SMG_PTC_res$p.value"))))
 }
+full_SMG_PTC_res = full_SMG_PTC_res %>% mutate(MANE_padj = p.adjust(P_MANE,method = "bonferroni"),
+                                                         Other_padj = p.adjust(P_Other,method = "bonferroni"))
 SMG_PTC_summary = SMG_PTC_summary %>% left_join(full_SMG_PTC_res)
 view(SMG_PTC_summary)
+SMG_PTC_summary = SMG_PTC_summary %>% mutate(MANE_padj = p.adjust(P_MANE,method = "bonferroni"))
 
 
 all_SMG_colors = c("MANE" = "#663171",
@@ -3449,7 +3469,7 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = all_GOI),
                 y = 4,
-                label = signif(P_MANE,digits = 3)),
+                label = signif(MANE_padj,digits = 3)),
             size = 9,
             show.legend = F,
             color = "#663171",
@@ -3458,7 +3478,7 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = all_GOI),
                 y = 3,
-                label = signif(P_Other,digits = 3)),
+                label = signif(Other_padj,digits = 3)),
             size = 9,
             show.legend = F,
             color = "#6FC37D",
@@ -3489,7 +3509,7 @@ SMG_PTC_boxplot = SMG_PTC_boxplot + geom_boxplot(aes(x = factor(Sample,levels = 
        fill = "Isoform Type",
        caption = "SMG6/SMG7 KD sPTC list")
 SMG_PTC_boxplot
-ggsave("SMG_PTC_all_isoforms_boxplot.pdf",
+ggsave("SMG_PTC_all_isoforms_boxplot_padj.pdf",
        plot = SMG_PTC_boxplot,
        device = pdf,
        width = 40,
@@ -3511,7 +3531,7 @@ SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = signif(P_MANE,digits = 3)),
+                      label = signif(MANE_padj,digits = 3)),
                   size = 9,
                   show.legend = F,
                   color = "#663171",
@@ -3520,7 +3540,7 @@ SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 3,
-                      label = signif(P_Other,digits = 3)),
+                      label = signif(Other_padj,digits = 3)),
                   size = 9,
                   show.legend = F,
                   color = "#6FC37D",
@@ -3551,7 +3571,7 @@ SMG_PTC_boxplot_main = SMG_PTC_boxplot_main + geom_boxplot(aes(x = factor(Sample
        fill = "Isoform Type",
        caption = "SMG6/SMG7 KD sPTC list")
 SMG_PTC_boxplot_main
-ggsave("SMG_PTC_all_isoforms_boxplot_mainFig.pdf",
+ggsave("SMG_PTC_all_isoforms_boxplot_mainFig_padj.pdf",
        plot = SMG_PTC_boxplot_main,
        device = pdf,
        width = 22,
@@ -3569,6 +3589,7 @@ for (i in all_GOI) {
                      exact = FALSE, alternative = "less")) #expect MANE to be less than NMD
   full_SMG_PTC_MANE_res = full_SMG_PTC_MANE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_SMG_PTC_MANE_res$p.value"))))
 }
+full_SMG_PTC_MANE_res = full_SMG_PTC_MANE_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 SMG_PTC_MANE_summary = SMG_PTC_MANE_summary %>% left_join(full_SMG_PTC_MANE_res)
 view(SMG_PTC_MANE_summary)
 
@@ -3586,7 +3607,7 @@ SMG_PTC_MANE_boxplot = SMG_PTC_MANE_boxplot + geom_boxplot(aes(x = factor(Sample
   geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD"),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = signif(P,digits = 3)),
+                      label = signif(padj,digits = 3)),
                   size = 9,
                   show.legend = F,
                   color = "black",
@@ -3617,7 +3638,7 @@ SMG_PTC_MANE_boxplot = SMG_PTC_MANE_boxplot + geom_boxplot(aes(x = factor(Sample
        fill = "Isoform Type",
        caption = "SMG6/SMG7 KD sPTC list")
 SMG_PTC_MANE_boxplot
-ggsave("SMG_PTC_MANE_boxplot.pdf",
+ggsave("SMG_PTC_MANE_boxplot_padj.pdf",
        plot = SMG_PTC_MANE_boxplot,
        device = pdf,
        width = 40,
@@ -3639,7 +3660,7 @@ SMG_PTC_MANE_boxplot_main = SMG_PTC_MANE_boxplot_main + geom_boxplot(aes(x = fac
   geom_text_repel(data = SMG_PTC_MANE_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = signif(P,digits = 3)),
+                      label = signif(padj,digits = 3)),
                   size = 9,
                   show.legend = F,
                   color = "black",
@@ -3670,7 +3691,7 @@ SMG_PTC_MANE_boxplot_main = SMG_PTC_MANE_boxplot_main + geom_boxplot(aes(x = fac
        fill = "Isoform Type",
        caption = "SMG6/SMG7 KD sPTC list")
 SMG_PTC_MANE_boxplot_main
-ggsave("SMG_PTC_MANE_boxplot_mainFig.pdf",
+ggsave("SMG_PTC_MANE_boxplot_mainFig_padj.pdf",
        plot = SMG_PTC_MANE_boxplot_main,
        device = pdf,
        width = 22,
@@ -3680,8 +3701,8 @@ ggsave("SMG_PTC_MANE_boxplot_mainFig.pdf",
 
 ##Make a heatmap of the P-value of each of the KDs for the summary figure
 #Rearainge the data table
-hm_df =SMG_PTC_MANE_summary %>% ungroup() %>% dplyr::select(Sample,P) %>% distinct(Sample,.keep_all = T) %>%  #Filter to just the data needed for the heatmap
-  mutate(p_log = -log10(P)) %>% select(Sample,p_log)
+hm_df =SMG_PTC_MANE_summary %>% ungroup() %>% dplyr::select(Sample,padj) %>% distinct(Sample,.keep_all = T) %>%  #Filter to just the data needed for the heatmap
+  mutate(p_log = -log10(padj)) %>% select(Sample,p_log)
 hm_df = hm_df %>% mutate(Sample = factor(Sample, levels = all_GOI)) %>% arrange(Sample) #Put them in the order of the other figures
 hm_df = hm_df %>% column_to_rownames(var="Sample") #Put the data in the format of pheatmap
 hm_ns = hm_df %>% filter(p_log < 1.30103) 
@@ -3703,7 +3724,7 @@ HM_sig = pheatmap(hm_sig,
                         cluster_cols = F,
                         display_numbers = T,
                         number_color = "black")#heatmap going from the smallest P-value to 0.01
-ggsave("PTC_heatmap_logp_sig.pdf",
+ggsave("PTC_heatmap_logpadj_sig.pdf",
        device = pdf,
        plot = HM_sig,
        width = 3,
@@ -3718,7 +3739,7 @@ HM_PTC_ns= pheatmap(hm_ns,
                         cluster_cols = F,
                         display_numbers = T,,
                         number_color = "black")#heatmap going from the 0.01 to 1
-ggsave("PTC_heatmap_logp_ns.pdf",
+ggsave("PTC_heatmap_logpadj_ns.pdf",
        device = pdf,
        plot = HM_PTC_ns,
        width = 3,
@@ -3733,7 +3754,7 @@ HM_all = pheatmap(hm_df,
                   cluster_cols = F,
                   display_numbers = T,
                   number_color = "black")#heatmap going from the smallest P-value to 0.01
-ggsave("PTC_heatmap_logp_all.pdf",
+ggsave("PTC_heatmap_logpadj_all.pdf",
        device = pdf,
        plot = HM_all,
        width = 3,
@@ -3791,6 +3812,8 @@ for (i in Splicing_inhibitors) {
                                                 P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
 }
 
+full_SI_newPTC_res = full_SI_PTC_res %>% mutate(other_padj = p.adjust(P_Other,method = "bonferroni"),
+                                                MANE_padj = p.adjust(P_MANE,method = "bonferroni"))
 #Look at MANE vs PTC vs Other
 SI_PTC_summary = full_SI_MANE_PTC %>% group_by(Sample,Type) %>%  summarise(n = n(),
                                                                            med = median(log2FoldChange)) %>% 
@@ -3830,13 +3853,13 @@ SI_PTC = SI_PTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inhibitor
   geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
             aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 4,
-                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
+                label = paste0("P(MANE)","=",signif(MANE_padj,digits = 3))),
             size = 6,
             color = "#663171") +
   geom_text(data = SI_PTC_summary %>% filter(Type == "PTC"),
             aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 3,
-                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
+                label = paste0("P(Other)","=",signif(other_padj,digits = 3))),
             size = 6,
             color = "#6FC37D") +
   labs(y = "Log2(Fold Change)",
@@ -3894,13 +3917,13 @@ SI_newPTC = SI_newPTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inh
   geom_text(data = SI_newPTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 4,
-                label = paste0("P(MANE)","=",signif(P_MANE,digits = 3))),
+                label = paste0("P(MANE)","=",signif(MANE_padj,digits = 3))),
             size = 6,
             color = "#663171") +
   geom_text(data = SI_newPTC_summary %>% filter(isoform == "NMD"),
             aes(x = factor(Sample,levels = Splicing_inhibitors),
                 y = 3,
-                label = paste0("P(Other)","=",signif(P_Other,digits = 3))),
+                label = paste0("P(Other)","=",signif(other_padj,digits = 3))),
             size = 6,
             color = "#6FC37D") +
   labs(y = "Log2(Fold Change)",
@@ -3910,7 +3933,7 @@ SI_newPTC = SI_newPTC + geom_boxplot(aes(x = factor(Sample,levels = Splicing_inh
   coord_cartesian(ylim = c(-4,4)) +
   theme_bw()
 SI_newPTC
-ggsave("Splicing_Inhibitor_SMG_sPTC_boxplot.pdf",
+ggsave("Splicing_Inhibitor_SMG_sPTC_boxplot_padj.pdf",
        plot = SI_newPTC,
        width = 22,
        height = 10,
@@ -4139,6 +4162,8 @@ for (i in Pres_KD) {
   full_NK_PTC_res = full_NK_PTC_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_NK_PTC_res$p.value"))),
                                                 P_MANE = eval(parse(text = paste0(i,"_MANE_NK_PTC_res$p.value"))))
 }
+full_NK_PTC_res = full_NK_PTC_res %>% mutate(MANE_padj = p.adjust(P_MANE,method = "bonferroni"),
+                                             Other_padj = p.adjust(P_Other,method = "bonferroni"))
 NK_PTC_summary = NK_PTC_summary %>% filter(Sample %in% all_GOI) %>% left_join(full_NK_PTC_res)
 view(full_NK_PTC_res)
 
@@ -4210,7 +4235,7 @@ NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 4,
-                      label = paste0("P=",signif(P_MANE,digits = 3))),
+                      label = paste0("P=",signif(MANE_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#663171",
@@ -4219,7 +4244,7 @@ NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, 
   geom_text_repel(data = SMG_PTC_summary %>% filter(isoform == "NMD" & Sample %in% Pres_KD),
                   aes(x = factor(Sample,levels = all_GOI),
                       y = 3,
-                      label = paste0("P=",signif(P_Other,digits = 3))),
+                      label = paste0("P=",signif(Other_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#6FC37D",
@@ -4250,7 +4275,7 @@ NK_no_Novel_boxplot = NK_no_Novel_boxplot + geom_boxplot(aes(x = factor(Sample, 
   coord_cartesian(ylim = c(-4,4)) +
   theme_bw()
 NK_no_Novel_boxplot
-ggsave("NK_PTC_isoforms_no_novel.pdf",
+ggsave("NK_PTC_isoforms_no_novel_padj.pdf",
        plot = NK_no_Novel_boxplot,
        width = 20,
        height = 10,
@@ -4726,6 +4751,8 @@ for (i in Disease_sample) {
   all_DIS_res = all_DIS_res %>% add_row(Sample = i, P_Other = eval(parse(text = paste0(i,"_other_PTC_res$p.value"))),
                                                 P_MANE = eval(parse(text = paste0(i,"_MANE_PTC_res$p.value"))))
 }
+all_DIS_res = all_DIS_res %>% mutate(other_padj = p.adjust(P_Other,method = "bonferroni"),
+                                     MANE_padj = p.adjust(P_MANE, method = "bonferroni"))
 Disease_PTC_sum = Disease_PTC_sum %>% left_join(all_DIS_res)
 write_csv(Disease_PTC,"Disease_PTC_transcripts.csv")
 
@@ -4745,7 +4772,7 @@ DIS_boxplot = DIS_boxplot +
   geom_text_repel(data = Disease_PTC_sum %>% filter(isoform == "NMD"),
                   aes(x = factor(Sample,levels = Disease_sample),
                       y = 4,
-                      label = paste0("P=",signif(P_MANE,digits = 3))),
+                      label = paste0("P=",signif(MANE_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#663171",
@@ -4754,7 +4781,7 @@ DIS_boxplot = DIS_boxplot +
   geom_text_repel(data = Disease_PTC_sum %>% filter(isoform == "NMD"),
                   aes(x = factor(Sample,levels = Disease_sample),
                       y = 3,
-                      label = paste0("P=",signif(P_Other,digits = 3))),
+                      label = paste0("P=",signif(other_padj,digits = 3))),
                   size = 7,
                   show.legend = F,
                   color = "#6FC37D",
@@ -4784,7 +4811,7 @@ DIS_boxplot = DIS_boxplot +
        fill = "Isoform")+
   coord_cartesian(y = c(-4,4))
 DIS_boxplot
-ggsave("Disease_boxplot_FC_plot.pdf",
+ggsave("Disease_boxplot_FC_plot_padj.pdf",
        device = pdf,
        plot = DIS_boxplot,
        width = 10,
@@ -4860,6 +4887,7 @@ for (i in Disease_sample) {
                                        exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
   DIS_PE_res = DIS_PE_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_res$p.value"))))
 }
+DIS_PE_res = DIS_PE_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 PE_DIS_sum = PE_DIS_sum %>% left_join(DIS_PE_res, by = "Sample")
 
 
@@ -4879,7 +4907,7 @@ DIS_PE_boxplot = DIS_PE_boxplot +
   geom_text(data = PE_DIS_sum %>% filter(isoform == "MANE"),
             aes(x = Sample,
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             show.legend = F,
             color = "black")+
@@ -4907,7 +4935,7 @@ DIS_PE_boxplot = DIS_PE_boxplot +
        fill = "Isoform Type")+
   coord_cartesian(y = c(-4,4))
 DIS_PE_boxplot
-ggsave("Disease_PE_boxplot.pdf",
+ggsave("Disease_PE_boxplot_padj.pdf",
        device = pdf,
        plot = DIS_PE_boxplot,
        width = 10,
@@ -5115,6 +5143,7 @@ for (i in Disease_sample) {
                                           exact = FALSE, alternative = "less")) #use less because we expect MANE to be lower than PE
   disease_AS_res = disease_AS_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_AS_res$p.value"))))
 }
+disease_AS_res = disease_AS_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 disease_AS_sum = disease_AS_sum %>% left_join(disease_AS_res, by = "Sample")
 
 disease_AS_colors = c("AS" = "#6DC5B9",
@@ -5136,7 +5165,7 @@ disease_AS_boxplot = disease_AS_boxplot +
   geom_text(data = disease_AS_sum %>% filter(Gene_type == "AS"),
             aes(x = Sample,
                 y = 3,
-                label = signif(P,digits = 3)),
+                label = signif(padj,digits = 3)),
             size = 7,
             show.legend = F,
             color = "black")+
@@ -5164,7 +5193,7 @@ disease_AS_boxplot = disease_AS_boxplot +
        fill = "Gene Type")+
   coord_cartesian(y = c(-4,4))
 disease_AS_boxplot
-ggsave("Disease_AS_boxplot.pdf",
+ggsave("Disease_AS_boxplot_padj.pdf",
        device = pdf,
        plot = disease_AS_boxplot,
        width = 10,
@@ -5209,7 +5238,7 @@ TPM_summary_colors = c("MANE" = "#663171",
 Dis_annotated_total_TPM = ggplot(data = Dis_annotated_TPM_summary)
 Dis_annotated_total_TPM = Dis_annotated_total_TPM + geom_col(aes(x = factor(Sample, levels = Disease_sample),
                                                          y = total,
-                                                         fill = factor(isoform,levels = c("MANE","NMD"))),
+                                  s                       fill = factor(isoform,levels = c("MANE","NMD"))),
                                                      position = "dodge") +
   scale_fill_manual(values = TPM_summary_colors) +
   labs(x = "Depletion",
@@ -5352,8 +5381,8 @@ no_3UTR_intron = no_3UTR_intron %>% mutate(UPF1 = if_else(transcripts %in% siUPF
          length = end-start) %>% 
   ungroup()
   
-UTR_NMD = no_3UTR_intron %>% mutate(NMD = case_when(total > 0 ~ "NMD",
-                                                    total == 0 ~ "no NMD",
+UTR_NMD = no_3UTR_intron %>% mutate(NMD = case_when(total > 1 ~ "NMD",
+                                                    total <= 1 ~ "no NMD",
                                                     TRUE ~ "filter"),
                                     bin = case_when(length < 501 ~ "<500",
                                                     length > 500 & length < 1001 ~ "501-1000",
@@ -5378,19 +5407,22 @@ for (i in select_list) {
                      exact = FALSE, alternative = "greater")) #Expect NMD to be greater than no NMD
   all_UTR_res = all_UTR_res %>% add_row(Sample = i, P = eval(parse(text = paste0(i,"_UTR_res$p.value"))))
 }
+all_UTR_res = all_UTR_res %>% mutate(padj = p.adjust(P,method = "bonferroni"))
 
 UTR_plots = ggplot(data = UTR_NMD_alltrans)
 UTR_NMD_plot = UTR_plots +
   geom_boxplot(aes(x = factor(Sample,levels = all_GOI),
                    y = log2FoldChange,
                    fill = factor(NMD,levels = c("no NMD","NMD"))),
-               position = position_dodge2(width = 0.8)) +
-  geom_label(data= UTR_NMD_sum,
+               position = position_dodge2(width = 0.8),
+               outlier.shape = 21) +
+  geom_text(data= UTR_NMD_sum,
              aes(x = factor(Sample,levels = all_GOI),
                  y = -6,
                  color = factor(NMD,levels = c("no NMD","NMD")),
                  label = n),
-             position = position_dodge2(width = 0.8)) +
+             position = position_dodge2(width = 0.8),
+            size = 7) +
   theme_bw() +
   scale_color_manual(values = c("no NMD" = "#7AE7C7",
                                 "NMD" = "#DD7373")) +
@@ -5399,12 +5431,18 @@ UTR_NMD_plot = UTR_plots +
   geom_label(data = all_UTR_res,
              aes(x = factor(Sample,levels = all_GOI),
                  y = 8,
-                 label = signif(P,digits = 3))) +
+                 label = signif(padj,digits = 3))) +
   labs(x = "Sample",
        fill = "NMD sensitive",
-       color = "NMD sensitive")
+       color = "NMD sensitive") +
+  geom_label(data = UTR_NMD_sum,
+             aes(x = factor(Sample,levels = all_GOI),
+                 y = median,
+                 label = round(median,digits = 3),
+                 color = factor(NMD,levels = c("no NMD","NMD"))),
+             position = position_dodge2(width = 0.8))
 UTR_NMD_plot
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/no_UTR_intron.pdf",
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/no_UTR_intron_padj.pdf",
        plot = UTR_NMD_plot,
        width = 20,
        height = 10,
@@ -5554,28 +5592,32 @@ SMG_PTC_UTR4 = SMG_PTC_MANE_UTR %>%
                              UTR_intron >= 4 ~ "4 or more"))
 SMG_UTR4_sum = SMG_PTC_UTR4 %>% filter(Sample %in% select_list) %>% 
   group_by(Sample,UTR_bin,isoform) %>% summarise(n = n(),median = median(log2FoldChange))
-SMG_PTC_UTR5 = SMG_PTC_MANE_UTR %>% 
-  mutate(UTR_bin = case_when(UTR_intron == 0 ~ "MANE",
-                             UTR_intron == 1 ~ "1",
-                             UTR_intron == 2 ~ "2",
-                             UTR_intron == 3 ~ "3",
-                             UTR_intron == 4 ~ "4",
-                             UTR_intron >= 5 ~ "5 or more"))
-SMG_UTR5_sum = SMG_PTC_UTR5 %>% filter(Sample %in% select_list) %>% 
-  group_by(Sample,UTR_bin,isoform) %>% summarise(n = n(),median = median(log2FoldChange))
+
 
 UTR4_colors = c("MANE" = "#663171",
-                "1" = "#f15bb5",
-                "2" = "#fee440",
-                "3" = "#00f5d4",
-                "4 or more" = "#00bbf9")
-UTR5_colors = c("MANE" = "#663171",
-                "1" = "#f15bb5",
-                "2" = "#fee440",
-                "3" = "#00f5d4",
-                "4" = "#00bbf9",
-                "5 or more" = "#0081a7")
+                "1" = "#EA7428",
+                "2" = "#EE9458",
+                "3" = "#F2AC7D",
+                "4 or more" = "#F6C4A2")
 UTR_levels = c("MANE","1","2","3","4","4 or more","5 or more")
+
+all_UTR4_MANE_res = tibble(Sample = as.character(),P_MANE = as.numeric())
+all_UTR4_4M_res = tibble(Sample = as.character(),P_4M = as.numeric())
+for (i in select_list) {
+  assign(paste0(i,"_UTR4_MANE_res"),
+         wilcox.test(log2FoldChange ~ UTR_bin, data = SMG_PTC_UTR4 %>% filter(Sample == i) %>% filter(UTR_bin == "MANE" | UTR_bin == "1"),
+                     exact = FALSE, alternative = "two.sided"))
+  assign(paste0(i,"_UTR4_4orM_res"),
+         wilcox.test(log2FoldChange ~ UTR_bin, data = SMG_PTC_UTR4 %>% filter(Sample == i) %>% filter(UTR_bin == "4 or more" | UTR_bin == "1"),
+                     exact = FALSE, alternative = "two.sided"))
+  all_UTR4_MANE_res = all_UTR4_MANE_res %>% add_row(Sample = i, P_MANE = eval(parse(text = paste0(i,"_UTR4_MANE_res$p.value"))))
+  all_UTR4_4M_res = all_UTR4_4M_res %>% add_row(Sample = i, P_4M = eval(parse(text = paste0(i,"_UTR4_4orM_res$p.value"))))
+}
+all_UPF4_res = all_UTR4_MANE_res %>% left_join(all_UTR4_4M_res, by = "Sample") %>% 
+  mutate(MANE_padj = p.adjust(P_MANE,method = "bonferroni"),
+         M4_padj = p.adjust(P_4M,method = "bonferroni"))
+SMG_UTR4_sum = SMG_UTR4_sum %>% left_join(all_UPF4_res, by = "Sample")
+
 UTR4_plot = ggplot(data = SMG_PTC_UTR4 %>% filter(Sample %in% select_list)) +
   geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
                    y = log2FoldChange,
@@ -5585,13 +5627,14 @@ UTR4_plot = ggplot(data = SMG_PTC_UTR4 %>% filter(Sample %in% select_list)) +
                outlier.alpha = 0.7) +
   
   theme_bw() +
-  geom_label(data = SMG_UTR4_sum,
+  geom_text(data = SMG_UTR4_sum,
              aes(x = factor(Sample, levels = all_GOI),
-                 y = -4,
+                 y = -6,
                  label = n,
                  color = factor(UTR_bin,levels = UTR_levels)),
              position = position_dodge(width = 0.8),
-             show.legend = FALSE) +
+             show.legend = FALSE,
+            size = 7) +
   geom_label(data = SMG_UTR4_sum,
              aes(x = factor(Sample, levels = all_GOI),
                  y = median,
@@ -5599,50 +5642,28 @@ UTR4_plot = ggplot(data = SMG_PTC_UTR4 %>% filter(Sample %in% select_list)) +
                  color = factor(UTR_bin,levels = UTR_levels)),
              position = position_dodge(width = 0.8),
              show.legend = FALSE) +
+  geom_text(data = SMG_UTR4_sum %>% filter(UTR_bin == "MANE"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 6,
+                label = paste0("PMANE=",signif(MANE_padj,digits = 3)),
+                color = factor(UTR_bin,levels = UTR_levels)),
+            position = position_dodge(width = 0.8),
+            show.legend = FALSE) +
+  geom_text(data = SMG_UTR4_sum %>% filter(UTR_bin == "4 or more"),
+            aes(x = factor(Sample, levels = all_GOI),
+                y = 7,
+                label = paste0("P4=",signif(M4_padj,digits = 3)),
+                color = factor(UTR_bin,levels = UTR_levels)),
+            position = position_dodge(width = 0.8),
+            show.legend = FALSE) +
   labs(x = "Sample",
        title = "NMD isoforms",
        fill = "3' UTR Introns") +
   scale_color_manual(values = UTR4_colors) +
   scale_fill_manual(values = UTR4_colors)
 UTR4_plot
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/3UTR_intons_4plus.pdf",
+ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/3UTR_intons_4plus_padj.pdf",
        plot = UTR4_plot,
-       width = 30,
-       height = 10,
-       units = "in",
-       dpi = 300,
-       device = pdf)
-UTR5_plot = ggplot(data = SMG_PTC_UTR5 %>% filter(Sample %in% select_list)) +
-  geom_boxplot(aes(x = factor(Sample, levels = all_GOI),
-                   y = log2FoldChange,
-                   fill = factor(UTR_bin,levels = UTR_levels)),
-               position = position_dodge(width = 0.8),
-               outlier.shape = 21,
-               outlier.alpha = 0.7) +
-  
-  theme_bw() +
-  geom_label(data = SMG_UTR5_sum,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = -4,
-                 label = n,
-                 color = factor(UTR_bin,levels = UTR_levels)),
-             position = position_dodge(width = 0.8),
-             show.legend = FALSE) +
-  geom_label(data = SMG_UTR5_sum,
-             aes(x = factor(Sample, levels = all_GOI),
-                 y = median,
-                 label = round(median,digits = 2),
-                 color = factor(UTR_bin,levels = UTR_levels)),
-             position = position_dodge(width = 0.8),
-             show.legend = FALSE) +
-  labs(x = "Sample",
-       title = "NMD isoforms",
-       fill = "3' UTR Introns") +
-  scale_color_manual(values = UTR5_colors) +
-  scale_fill_manual(values = UTR5_colors)
-UTR5_plot
-ggsave("C:/Users/Caleb/OneDrive - The Ohio State University/Splicing and NMD/Revision - RNA Biology 2025/potential_figures/3UTR_intons_5plus.pdf",
-       plot = UTR5_plot,
        width = 30,
        height = 10,
        units = "in",
